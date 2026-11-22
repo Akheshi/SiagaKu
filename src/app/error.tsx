@@ -28,6 +28,16 @@ export default function Galat({ error, retry }: { error: unknown; retry: () => v
           Ke beranda
         </Link>
       </div>
+      <details className="mt-8 text-sm text-ink-3">
+        <summary className="cursor-pointer">Detail teknis</summary>
+        <pre className="mt-2 overflow-x-auto font-mono text-xs whitespace-pre-wrap">
+          {error instanceof Error
+            ? `${error.name}: ${error.message}\n${(error.stack ?? "").split("\n").slice(0, 6).join("\n")}`
+            : String(error)}
+          {"\n"}
+          {typeof navigator !== "undefined" ? navigator.userAgent : ""}
+        </pre>
+      </details>
     </div>
   );
 }
