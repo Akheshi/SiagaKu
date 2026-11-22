@@ -5,6 +5,7 @@ import L from "leaflet";
 import { useEffect } from "react";
 import { MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
 import type { LatLon } from "@/lib/geo";
+import { useTerpasang } from "./useTerpasang";
 import type { TitikAman } from "@/lib/safePoints";
 
 
@@ -39,6 +40,8 @@ function Bingkai({ titik }: { titik: LatLon[] }) {
 }
 
 export default function ResultMap({ rumah, titik, tujuanId }: { rumah: LatLon; titik: TitikAman[]; tujuanId: string | null }) {
+  const terpasang = useTerpasang();
+  if (!terpasang) return <div className="size-full bg-ground" aria-hidden="true" />;
   const tujuan = titik.find((t) => t.id === tujuanId) ?? titik[0];
   return (
     <MapContainer center={[rumah.lat, rumah.lon]} zoom={14} scrollWheelZoom={false} className="size-full">

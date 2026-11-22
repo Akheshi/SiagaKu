@@ -5,6 +5,7 @@ import L from "leaflet";
 import { useEffect } from "react";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import type { LatLon } from "@/lib/geo";
+import { useTerpasang } from "./useTerpasang";
 
 const ikonRumah = L.divIcon({
   className: "",
@@ -70,6 +71,8 @@ type Props = {
 };
 
 export default function MapPicker({ titik, onPilih, pusatKey }: Props) {
+  const terpasang = useTerpasang();
+  if (!terpasang) return <div className="size-full bg-ground" aria-hidden="true" />;
   return (
     <MapContainer
       center={[titik.lat, titik.lon]}

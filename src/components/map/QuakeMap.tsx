@@ -3,9 +3,12 @@
 import "leaflet/dist/leaflet.css";
 import { CircleMarker, MapContainer, TileLayer, Tooltip } from "react-leaflet";
 import type { Gempa } from "@/lib/bmkg";
+import { useTerpasang } from "./useTerpasang";
 
 /** Peta kecil: gempa terbaru (merah, besar) + 15 gempa M5+ terakhir (lingkaran sesuai magnitudo). */
 export default function QuakeMap({ terbaru, terkini }: { terbaru: Gempa | null; terkini: Gempa[] }) {
+  const terpasang = useTerpasang();
+  if (!terpasang) return <div className="size-full bg-ground" aria-hidden="true" />;
   const pusat: [number, number] = terbaru ? [terbaru.lat, terbaru.lon] : [-2.5, 118];
   return (
     <MapContainer
