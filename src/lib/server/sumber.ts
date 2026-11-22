@@ -6,6 +6,9 @@ import { cacheLife } from "next/cache";
 import { parseGempa, type Gempa } from "@/lib/bmkg";
 import { dalamCakupan, jarakKeGarisKm, type Bbox, type Garis } from "@/lib/coast";
 import pantaiBengkulu from "@/data/coastline-bengkulu.json";
+import titikBengkulu from "@/data/titik-bengkulu.json";
+import { haversineKm } from "@/lib/geo";
+import { pilihTitikAman, type Kandidat, type TitikAman } from "@/lib/safePoints";
 
 export const USER_AGENT = "SiagaKu/0.1 (+https://github.com/Akheshi/SiagaKu)";
 const BMKG = "https://data.bmkg.go.id/DataMKG/TEWS";
@@ -88,6 +91,74 @@ export async function overpass(query: string, ms: number): Promise<{ elements: u
     }
   }
   throw galat ?? new Error("Overpass tidak merespons");
+}
+
+// ---------- Titik aman (PRD §7.3) ----------
+
+type DataTitik = { bbox: Bbox; titik: [string, string, string, number, number, number | null][] };
+const RADIUS_TITIK_KM = 5;
+
+function jenisDariTag(t: Record<string, string>): string {
+  const a = t.amenity;
+  if (t.emergency === "assembly_point") return "Titik kumpul";
+  if (a === "shelter") return "Shelter";
+  if (a === "school") return "Sekolah";
+  if (a === "college" || a === "university") return "Kampus";
+  if (a === "hospital") return "Rumah sakit";
+  if (a === "townhall") return "Kantor pemerintah";
+  if (a === "community_centre") return "Balai warga";
+  if (a === "place_of_worship") return t.religion === "muslim" ? "Masjid" : t.religion === "christian" ? "Gereja" : "Tempat ibadah";
+  if (t.office === "government" || t.building === "government") return "Kantor pemerintah";
+  return "Tempat umum";
+}
+
+/** Calon titik aman di luar data bawaan: Overpass + Open-Meteo. Cache 1 hari per titik (dibulatkan 3 desimal). */
+async function kandidatLangsung(lat: number, lon: number): Promise<Kandidat[]> {
+  "use cache";
+  cacheLife("days");
+  const r = RADIUS_TITIK_KM * 1000;
+  const q = `[out:json][timeout:12];(nwr["amenity"~"^(school|college|university|place_of_worship|townhall|hospital|shelter|community_centre)$"](around:${r},${lat},${lon});nwr["emergency"="assembly_point"](around:${r},${lat},${lon});nwr["office"="government"](around:${r},${lat},${lon}););out center tags;`;
+  const hasil = await overpass(q, 15_000);
+  type El = { type: string; id: number; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags?: Record<string, string> };
+  const dasar = (hasil.elements as El[])
+    .map((e) => {
+      const t = e.tags ?? {};
+      const jenis = jenisDariTag(t);
+      const nama = (t.name || "").trim() || (jenis === "Titik kumpul" || jenis === "Shelter" ? jenis : "");
+      const la = e.lat ?? e.center?.lat;
+      const lo = e.lon ?? e.center?.lon;
+      if (!nama || la == null || lo == null) return null;
+      return { id: `osm-${e.type[0]}${e.id}`, nama, jenis, lat: la, lon: lo, elevasiM: null as number | null };
+    })
+    .filter((x): x is Kandidat => x !== null)
+    .sort((a, b) => haversineKm({ lat, lon }, a) - haversineKm({ lat, lon }, b))
+    .slice(0, 100);
+  if (dasar.length === 0) return [];
+  const elev = await ambilElevasi(dasar.map(({ lat: la, lon: lo }) => ({ lat: la, lon: lo })));
+  return dasar.map((d, i) => ({ ...d, elevasiM: elev[i] }));
+}
+
+export type HasilTitik = { titik: TitikAman[]; sumber: "bawaan" | "overpass" | "tidak-tersedia" };
+
+/** Cari ≤3 titik aman terdekat. Bengkulu: data bawaan (instan); lainnya: Overpass (bisa gagal). */
+export async function cariTitikAman(lat: number, lon: number, elevasiRumah: number | null, lambat: boolean): Promise<HasilTitik> {
+  const rumah = { lat, lon, elevasiM: elevasiRumah };
+  const data = titikBengkulu as unknown as DataTitik;
+  if (dalamCakupan(rumah, data.bbox, 0.05)) {
+    const pantai = pantaiBengkulu as unknown as { garis: Garis[] };
+    const kandidat: Kandidat[] = data.titik
+      .map(([id, nama, jenis, la, lo, elevasiM]) => ({ id, nama, jenis, lat: la, lon: lo, elevasiM }))
+      .filter((k) => haversineKm(rumah, k) <= RADIUS_TITIK_KM)
+      .map((k) => ({ ...k, jarakPantaiKm: jarakKeGarisKm(k, pantai.garis) }));
+    const jarakPantaiKm = jarakKeGarisKm(rumah, pantai.garis);
+    return { titik: pilihTitikAman(kandidat, { ...rumah, jarakPantaiKm }, lambat), sumber: "bawaan" };
+  }
+  try {
+    const kandidat = await kandidatLangsung(Math.round(lat * 1000) / 1000, Math.round(lon * 1000) / 1000);
+    return { titik: pilihTitikAman(kandidat, rumah, lambat), sumber: "overpass" };
+  } catch {
+    return { titik: [], sumber: "tidak-tersedia" };
+  }
 }
 
 export type HasilPantai = { jarakKm: number | null; sumber: "bawaan" | "overpass" };
