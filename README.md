@@ -92,7 +92,7 @@ Kategori: 0–39 Rendah · 40–59 Sedang · 60–79 Tinggi · 80–100 Sangat t
 
 ## Menjalankan di komputer sendiri
 
-Butuh Node.js 20 ke atas.
+Gunakan Node.js 22.12+ pada seri 22, atau seri 24 dan 26.
 
 ```bash
 git clone https://github.com/Akheshi/SiagaKu.git
