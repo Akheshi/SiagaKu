@@ -172,6 +172,9 @@ function TampilanHasil({ data: d }: { data: HasilRencana }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href={contoh ? "/hasil/cetak?contoh=bengkulu" : "/hasil/cetak"} className={buttonClass("go", "min-h-11 px-4 text-[15px]")}>
+            Cetak lembar rencana
+          </Link>
           <a
             className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}
             href={`https://wa.me/?text=${encodeURIComponent(teksBagikan(d))}`}
