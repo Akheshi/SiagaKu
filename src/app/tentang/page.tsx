@@ -21,7 +21,8 @@ export default function Tentang() {
                 untuk input yang sama, rumusnya terbuka di bawah ini.
             </p>
 
-            <table className="mt-4 w-full border-2 border-ink text-left">
+            <div className="mt-4 overflow-x-auto" role="region" aria-label="Tabel rumus skor (geser ke samping di layar kecil)" tabIndex={0}>
+            <table className="w-full min-w-[560px] border-2 border-ink text-left">
                 <thead>
                     <tr className="bg-sign text-white">
                         <th className="border border-line px-3 py-2">Faktor</th>
@@ -123,6 +124,7 @@ export default function Tentang() {
                     </tr>
                 </tbody>
             </table>
+            </div>
 
             <p className="mt-3 font-mono">
             Kategori: 0–39 Rendah · 40–59 Sedang · 60–79 Tinggi · 80–100 Sangat tinggi
