@@ -1,26 +1,63 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Token desain — lihat DESAIN-UI.md §2. "Bahasa rambu evakuasi". */
+@theme {
+  --color-sign: #00703c; /* hijau keselamatan ISO */
+  --color-sign-deep: #00552d;
+  --color-sign-tint: #e3f0e8;
+  --color-risk: #c8102e; /* HANYA untuk status risiko */
+  --color-risk-tint: #fbe7ea;
+  --color-ink: #000000;
+  --color-ink-2: #3d4440;
+  --color-ink-3: #6b736e;
+  --color-line: #c9cfcb;
+  --color-ground: #f3f5f3;
+  --color-paper: #f7f1e3; /* hanya lembar cetak */
+  --color-focus: #ffb000;
+
+  /* skala kategori risiko */
+  --color-cat-rendah: #7fb798;
+  --color-cat-sedang: #e2b45c;
+  --color-cat-tinggi: #c8102e;
+  --color-cat-sangat: #7a0a1c;
+
+  --font-sign: var(--font-barlow-condensed), system-ui, sans-serif;
+  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-serif: var(--font-plex-serif), Georgia, serif;
+
+  --radius-*: initial; /* sudut tegas: tidak ada radius bawaan */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-sign);
+    font-weight: 700;
+    line-height: 1.05;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }
