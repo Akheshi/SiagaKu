@@ -1,3 +1,4 @@
+import { MuatQuakeMap } from "@/components/map/MuatQuakeMap";
 import { ambilGempa, type DataGempa } from "@/lib/server/sumber";
 
 const angka = (n: number, d = 1) => n.toLocaleString("id-ID", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -77,6 +78,12 @@ export async function QuakePanel() {
       <p className="flex items-center gap-2.5 border-t border-line px-4 py-3 text-sm">
         <span className={`size-2.5 flex-none ${tsunami.warna}`} aria-hidden="true" />
         {tsunami.teks}
+      </p>
+      <div className="relative z-0 h-[200px] border-t border-line" role="img" aria-label={`Peta pusat gempa terbaru dan ${data.terkini.length} gempa M5+ terakhir`}>
+        <MuatQuakeMap terbaru={g} terkini={data.terkini} />
+      </div>
+      <p className="border-t border-line px-4 py-2 text-xs text-ink-3">
+        Titik merah besar: gempa terbaru · lingkaran: {data.terkini.length} gempa M5+ terakhir (makin besar makin kuat)
       </p>
       {g.dirasakan && (
         <p className="border-t border-line px-4 py-3 text-sm text-ink-2">
