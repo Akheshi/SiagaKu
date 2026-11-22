@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { ButtonLink } from "@/components/ButtonLink";
+import { QuakePanel, QuakePanelKosong } from "@/components/QuakePanel";
 
 const STEPS = [
   {
@@ -21,7 +23,8 @@ const STEPS = [
 export default function Home() {
   return (
     <div className="mx-auto max-w-[1200px] px-4">
-      <section className="py-8 sm:py-14" aria-labelledby="judul-beranda">
+      <div className="grid items-start gap-8 py-8 sm:py-14 lg:grid-cols-[1.25fr_1fr] lg:gap-12">
+      <section aria-labelledby="judul-beranda">
         <h1 id="judul-beranda" className="max-w-[12ch] text-[clamp(44px,6.4vw,84px)]">
           Gempa kuat datang. Keluargamu lari ke mana?
         </h1>
@@ -42,6 +45,10 @@ export default function Home() {
           Tanpa daftar akun. Data hanya tersimpan di perangkatmu.
         </p>
       </section>
+      <Suspense fallback={<QuakePanelKosong pesan="Memuat data gempa BMKG…" />}>
+        <QuakePanel />
+      </Suspense>
+      </div>
 
       <ol className="grid border-t-[3px] border-ink md:grid-cols-3">
         {STEPS.map((step, i) => (
