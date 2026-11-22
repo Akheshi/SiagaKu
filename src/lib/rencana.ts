@@ -1,11 +1,11 @@
 /**
- * Bentuk rencana (output AI, PRD §7.4), template cadangan, dan tas siaga dasar.
+ * Rencana deterministik, prioritas persiapan dari AI, dan tas siaga dasar.
  * Semua fungsi murni — dipakai server (fallback) dan diuji unit.
  */
 import { z } from "zod";
+import { pesisir } from "./hasil";
 import type { InputRencanaT } from "./input";
 import type { HasilSkor } from "./score";
-import type { TitikAman } from "./safePoints";
 
 const teks = (maks: number) => z.string().trim().min(1).max(maks);
 
@@ -15,13 +15,13 @@ export const RencanaSchema = z.object({
   peran_anggota: z.array(z.object({ siapa: teks(40), tugas: teks(240) })).min(1).max(8),
   titik_tujuan_id: z.string().nullable(),
   rute_narasi: teks(500),
-  tas_siaga_tambahan: z.array(z.object({ barang: teks(80), alasan: teks(160) })).max(8),
+  tas_siaga_tambahan: z.array(z.object({ barang: teks(213), alasan: teks(160) })).max(8),
   tips_rumah: z.array(teks(240)).max(5),
 });
 
 export type Rencana = z.infer<typeof RencanaSchema>;
 
-export type Konteks = { input: InputRencanaT; skor: HasilSkor; titik: TitikAman[] };
+type Konteks = { input: InputRencanaT; skor: HasilSkor };
 
 export type ItemTas = { id: string; barang: string; ket?: string; untuk?: string };
 
@@ -41,8 +41,6 @@ export function tasDasar(penghuni: number): ItemTas[] {
   ];
 }
 
-const pesisir = (i: InputRencanaT) => i.jarakPantai !== "gt5";
-
 /** Tambahan tas siaga sesuai kondisi keluarga (dipakai juga untuk melengkapi hasil AI). */
 export function tasTambahanDasar(i: InputRencanaT): Rencana["tas_siaga_tambahan"] {
   const t: Rencana["tas_siaga_tambahan"] = [];
@@ -57,11 +55,8 @@ export function tasTambahanDasar(i: InputRencanaT): Rencana["tas_siaga_tambahan"
   return t.slice(0, 8);
 }
 
-const angka = (n: number, d = 1) => n.toLocaleString("id-ID", { maximumFractionDigits: d });
-
-/** Rencana tanpa AI — selalu bisa dibuat dari data yang sama. */
-export function rencanaTemplate({ input, skor, titik }: Konteks): Rencana {
-  const tujuan = titik[0];
+/** Skor, arahan darurat, dan teks persiapan selalu dibentuk oleh aplikasi. */
+export function rencanaTemplate({ input, skor }: Konteks): Rencana {
   const faktorBesar = [...skor.rincian].sort((a, b) => b.poin / b.maks - a.poin / a.maks).slice(0, 2);
   const lambat = input.kerentanan.lansia || input.kerentanan.disabilitas || input.kerentanan.balita;
 
@@ -69,16 +64,17 @@ export function rencanaTemplate({ input, skor, titik }: Konteks): Rencana {
     `Skor risiko rumahmu ${skor.total} dari 100, kategori ${skor.kategori.toLowerCase()}.`,
     `Penyumbang terbesar: ${faktorBesar.map((f) => `${f.faktor.toLowerCase()} (${f.nilai})`).join(" dan ")}.`,
     pesisir(input)
-      ? "Jika gempa terasa kuat atau lama, anggap tsunami bisa datang dalam 20–30 menit dan segera evakuasi."
+      ? "Jika gempa terasa kuat atau lama di pesisir, segera evakuasi setelah guncangan mereda."
       : "Rumahmu jauh dari pantai, jadi fokus utamanya adalah selamat dari guncangan dan reruntuhan.",
   ].join(" ");
 
-  const tujuanTeks = tujuan ? `${tujuan.nama} (${angka(tujuan.jarakKm)} km ke arah ${tujuan.arah.nama})` : "tempat tinggi terdekat";
+  const rute_narasi = pesisir(input)
+    ? "Jika gempa terasa kuat atau lama di pesisir, segera evakuasi setelah guncangan mereda. Ikuti rambu evakuasi resmi menuju tempat yang lebih tinggi. Jauhi pantai dan tepi sungai. Jangan tunggu sirene."
+    : "Setelah guncangan mereda, menuju ruang terbuka terdekat yang jauh dari bangunan, tiang listrik, dan kabel. Ikuti arahan petugas setempat.";
   const langkah_darurat = pesisir(input)
     ? [
         "Saat guncangan: lindungi kepala, berlindung di bawah meja yang kokoh, jauhi kaca dan lemari tinggi.",
-        "Begitu guncangan berhenti, ambil tas siaga dan segera keluar. Jangan menunggu sirene atau pengumuman.",
-        `Jalan kaki menjauhi pantai menuju ${tujuanTeks}. Hindari jembatan dan tepi sungai.`,
+        rute_narasi,
         lambat
           ? "Bantu anggota yang lebih lambat sejak awal; jangan berpencar."
           : "Tetap bersama keluarga; jangan kembali mengambil barang.",
@@ -86,27 +82,20 @@ export function rencanaTemplate({ input, skor, titik }: Konteks): Rencana {
       ]
     : [
         "Saat guncangan: lindungi kepala, berlindung di bawah meja yang kokoh, jauhi kaca dan lemari tinggi.",
-        "Setelah guncangan berhenti, keluar dengan tenang ke ruang terbuka yang jauh dari bangunan dan tiang listrik.",
+        rute_narasi,
         "Periksa anggota keluarga yang terluka; matikan kompor dan listrik bila aman.",
         "Waspadai gempa susulan; jangan masuk kembali ke bangunan yang retak.",
         "Ikuti informasi resmi BMKG dan BPBD.",
       ];
 
   const peran_anggota: Rencana["peran_anggota"] = [
-    { siapa: "Orang dewasa pertama", tugas: `Membawa tas siaga dan memimpin jalan ke ${tujuan ? tujuan.nama : "tempat aman"}.` },
+    { siapa: "Orang dewasa pertama", tugas: "Pandu keluarga keluar. Bawa tas siaga jika sudah terjangkau dan tidak menunda evakuasi." },
   ];
   if (input.kerentanan.balita) peran_anggota.push({ siapa: "Orang dewasa kedua", tugas: "Menggendong balita dengan gendongan agar tangan tetap bebas." });
   if (input.kerentanan.lansia) peran_anggota.push({ siapa: "Pendamping lansia", tugas: "Menuntun lansia sejak awal dan membawa obat rutinnya." });
   if (input.kerentanan.hamil) peran_anggota.push({ siapa: "Ibu hamil", tugas: "Berjalan bersama pendamping, tidak membawa beban berat." });
   if (input.kerentanan.disabilitas) peran_anggota.push({ siapa: "Pendamping disabilitas", tugas: "Membantu anggota disabilitas beserta alat bantunya." });
   if (input.penghuni > peran_anggota.length) peran_anggota.push({ siapa: "Anggota lainnya", tugas: "Membawa air dan senter, berjalan di belakang agar tidak ada yang tertinggal." });
-
-  const vertikal = tujuan?.kelas === "lebih-tinggi"
-    ? " Tempat ini di bawah 30 m, jadi begitu sampai segera naik ke lantai paling atas bangunan."
-    : "";
-  const rute_narasi = tujuan
-    ? `Dari rumah, jalan kaki ke arah ${tujuan.arah.nama} sejauh sekitar ${angka(tujuan.jarakKm)} km menuju ${tujuan.nama}, yang berada ${angka(tujuan.elevasiM, 0)} m di atas laut. Perkiraan waktu tempuh ${tujuan.menit} menit.${vertikal} ${titik[1] ? `Jika jalan tertutup, pilih ${titik[1].nama} (${angka(titik[1].jarakKm)} km ke arah ${titik[1].arah.nama}).` : ""}`.trim()
-    : "Belum ditemukan tempat tinggi bernama di sekitar rumah. Bergeraklah menjauhi pantai minimal 3 km atau menuju tempat dengan ketinggian 30 m ke atas.";
 
   const tips_rumah: string[] = [];
   if (input.bangunan !== "beton") tips_rumah.push("Periksa dinding yang retak dan pertimbangkan perkuatan kolom saat renovasi.");
@@ -118,23 +107,30 @@ export function rencanaTemplate({ input, skor, titik }: Konteks): Rencana {
     ringkasan,
     langkah_darurat,
     peran_anggota: peran_anggota.slice(0, 8),
-    titik_tujuan_id: tujuan?.id ?? null,
+    titik_tujuan_id: null,
     rute_narasi,
     tas_siaga_tambahan: tasTambahanDasar(input),
     tips_rumah: tips_rumah.slice(0, 5),
   };
 }
 
-/**
- * Validasi hasil AI terhadap aturan produk: bentuk JSON benar dan
- * titik tujuan hanya dari daftar sistem. Gagal → null (pakai template).
- */
-export function periksaRencanaAI(mentah: unknown, titik: TitikAman[]): Rencana | null {
-  const hasil = RencanaSchema.safeParse(mentah);
+const PrioritasSchema = z.strictObject({
+  prioritas_tips: z.number().int().min(0),
+  prioritas_peran: z.number().int().min(0),
+});
+
+function dahulukan<T>(daftar: T[], indeks: number): T[] {
+  return [daftar[indeks], ...daftar.slice(0, indeks), ...daftar.slice(indeks + 1)];
+}
+
+export function periksaRencanaAI(mentah: unknown, rencana: Rencana): Rencana | null {
+  const hasil = PrioritasSchema.safeParse(mentah);
   if (!hasil.success) return null;
-  const r = hasil.data;
-  const ids = new Set(titik.map((t) => t.id));
-  if (titik.length === 0) return { ...r, titik_tujuan_id: null };
-  if (r.titik_tujuan_id === null || !ids.has(r.titik_tujuan_id)) return null;
-  return r;
+  const { prioritas_tips, prioritas_peran } = hasil.data;
+  if (prioritas_tips >= rencana.tips_rumah.length || prioritas_peran >= rencana.peran_anggota.length) return null;
+  return {
+    ...rencana,
+    tips_rumah: dahulukan(rencana.tips_rumah, prioritas_tips),
+    peran_anggota: dahulukan(rencana.peran_anggota, prioritas_peran),
+  };
 }

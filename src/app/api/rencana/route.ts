@@ -8,8 +8,8 @@ import { ambilElevasi, ambilGempa, cariTitikAman } from "@/lib/server/sumber";
 import { galat } from "@/lib/server/validasi";
 
 /**
- * POST /api/rencana — hitung skor (deterministik), cari titik aman, lalu minta AI
- * menyusun rencana. AI gagal/tidak valid → template. Tidak pernah melempar error mentah.
+ * POST /api/rencana — hitung skor dan arahan serta cari kandidat OSM.
+ * DeepSeek hanya menentukan prioritas persiapan. Jika gagal, pakai urutan awal.
  */
 export async function POST(request: Request) {
   if (!bolehLewat(ipDari(request))) {
@@ -47,11 +47,12 @@ export async function POST(request: Request) {
 
   const skor = hitungSkor(keInputSkor(input, gempaDekat));
   const lambat = input.kerentanan.lansia || input.kerentanan.disabilitas;
-  const { titik, sumber: sumberTitik } = await cariTitikAman(lat, lon, input.elevasiM, lambat);
-
-  const konteks = { input, skor, titik };
-  const ai = await mintaRencanaAI(konteks, gempaDekat);
-  const rencana = ai ?? rencanaTemplate(konteks);
+  const template = rencanaTemplate({ input, skor });
+  const [{ titik, sumber: sumberTitik }, ai] = await Promise.all([
+    cariTitikAman(lat, lon, input.elevasiM, lambat),
+    mintaRencanaAI(input, template),
+  ]);
+  const rencana = ai ?? template;
 
   return Response.json({
     ok: true,

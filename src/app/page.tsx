@@ -16,7 +16,7 @@ const STEPS = [
   {
     label: "Hasil",
     title: "Dapat rencana",
-    body: "Skor risiko dengan rinciannya, titik aman terdekat, dan isi tas siaga.",
+    body: "Rincian skor risiko, kandidat lokasi dari peta, dan isi tas siaga.",
   },
 ];
 
@@ -72,12 +72,11 @@ export default function Home() {
         <div className="max-w-[62ch] space-y-3 text-ink-2">
           <p>
             Peta risiko resmi menunjukkan wilayah. Tapi dua rumah di kelurahan yang sama bisa berbeda
-            nasib: satu di 4 meter di atas laut, satu lagi di bukit 35 meter. Yang menentukan selamat
-            atau tidak adalah keputusan dalam 20 menit pertama.
+            tingkat risiko karena ketinggian, posisi terhadap pantai, dan kondisi bangunannya.
           </p>
           <p>
-            Skor di SiagaKu dihitung dengan rumus terbuka yang bisa kamu periksa. AI hanya membantu
-            menuliskan rencana, dan hanya boleh menyebut tempat yang ada di data peta.
+            Rumus skor bisa kamu periksa. AI membantu memilih tips dan peran keluarga yang perlu
+            dibahas lebih dulu.
           </p>
         </div>
       </section>

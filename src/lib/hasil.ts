@@ -19,7 +19,8 @@ export type HasilRencana = {
 };
 
 /** Hasil terakhir disimpan agar muat ulang tidak memanggil AI lagi (PRD F14). */
-export const KUNCI_HASIL = "siagaku:hasil";
+// Buat ulang hasil lama agar arahan sebelumnya tidak ditampilkan atau dicetak.
+export const KUNCI_HASIL = "siagaku:hasil:v2";
 export const KUNCI_TAS = "siagaku:tas";
 
 export function kunciInput(i: InputRencanaT): string {

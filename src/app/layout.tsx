@@ -32,7 +32,7 @@ const plexSerif = IBM_Plex_Serif({
 export const metadata: Metadata = {
   title: "SiagaKu — rencana siaga bencana untuk keluargamu",
   description:
-    "Cek risiko gempa dan tsunami di rumahmu, temukan titik aman terdekat, dan susun rencana evakuasi keluarga yang bisa dicetak.",
+    "Cek risiko gempa dan tsunami di rumahmu, lihat kandidat lokasi dari peta, dan siapkan rencana keluarga yang bisa dicetak.",
 };
 
 export const viewport: Viewport = {

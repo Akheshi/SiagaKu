@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
     title: "Metodologi & Sumber Data — SiagaKu",
-    description: "Cara SiagaKu menghitung skor risiko bencana, memilih titik aman, dan dari mana datanya berasal.",
+    description: "Cara SiagaKu menghitung skor risiko, memilih kandidat lokasi, dan menggunakan data.",
 };
 
 export default function Tentang() {
@@ -10,7 +10,7 @@ export default function Tentang() {
         <article className="mx-auto max-w-[1200px] px-4 py-8 sm:py-14">
             <h1 className="max-w-[14ch] text-[40px]">Metodologi &amp; Sumber Data</h1>
             <p className="mt-5 max-w-[52ch] text-[19px] text-ink-2">
-                Halaman ini menjelaskan cara SiagaKu menghitung skor risiko, memilih titik aman,
+                Halaman ini menjelaskan cara SiagaKu menghitung skor risiko, memilih kandidat lokasi,
                 dari mana datanya, dan apa batasannya.
             </p>
 
@@ -139,11 +139,10 @@ export default function Tentang() {
                 waspada daripada meremehkan.
             </p>
 
-            {/* 2. Cara memilih titik aman */}
-            <h2 className="mt-14 text-[28px]">Cara memilih titik aman</h2>
+            <h2 className="mt-14 text-[28px]">Cara memilih kandidat lokasi</h2>
             <p  className="mt-2 max-w-[62ch] text-ink-2">
-                SiagaKu tidak memilih titik aman secara acak. Dari semua calon tempat di peta, sistem
-                memilih sampai 3 titik dengan dua tingkat:
+                SiagaKu menampilkan hingga tiga lokasi dari OpenStreetMap berdasarkan ketinggian dan jarak.
+                Cek status lokasi evakuasi, akses, dan jalurnya ke BPBD saat menyusun rencana keluarga.
             </p>
             <ol className="mt-2 list-decimal space-y-2 pl-5">
                 <li>
@@ -152,23 +151,22 @@ export default function Tentang() {
                     dari yang terdekat.
                 </li>
                 <li>
-                    <strong>Tingkat 2: cadangan evakuasi vertikal.</strong> Kalau tingkat 1 kurang
+                    <strong>Tingkat 2: cadangan pemetaan.</strong> Kalau tingkat 1 kurang
                     dari 3, ditambah tempat yang ketinggiannya di bawah ambang tingkat 1 tapi
                     ≥ ketinggian rumah + 5 m dan lebih jauh dari pantai daripada rumah, dalam radius
-                    3 km. Tempat seperti ini dipakai untuk naik ke lantai atas gedung bertingkat
-                    saat tidak ada tempat tinggi yang dekat.
+                    3 km. Syarat ini harus didukung data jarak pantai rumah dan kandidat.
                 </li>
             </ol>
             <p className="mt-3 max-w-[62ch] text-ink-2">
-                Kalau ketinggian rumah tidak diketahui, hanya tingkat 1 yang dipakai.
+                Jika ketinggian atau jarak rumah ke pantai belum diketahui, sistem hanya menampilkan kandidat tingkat 1.
             </p>
 
             {/* 3. Temuan */}
             <h2 className="mt-14 text-[28px]">Temuan</h2>
             <p className="mt-3 max-w-[62ch] text-ink-2">
                 Kota Bengkulu sebagian besar dataran rendah, jadi tempat tinggi ≥ 30 m sering tidak
-                tersedia dalam 5 km, tingkat cadangan inilah yang membuat rencana evakuasi tetap ada.
-                Untuk Provinsi Bengkulu, tim menyimpan data 3.148 calon titik aman (sekolah, masjid,
+                tersedia dalam 5 km dari titik contoh. Untuk Provinsi Bengkulu, tim menyimpan data
+                3.148 calon lokasi (sekolah, masjid,
                 gereja, kantor pemerintah, rumah sakit, titik kumpul, dan lainnya) beserta
                 ketinggiannya di repo (
                 <code className="font-mono">src/data/titik-bengkulu.json</code>), diambil dari
@@ -201,7 +199,7 @@ export default function Tentang() {
                     <a className="underline" href="https://overpass-api.de/" target="_blank" rel="noreferrer">
                     overpass-api.de
                     </a>{" "}
-                    (calon titik aman dan garis pantai: sekolah, masjid, kantor pemerintah, shelter).
+                    (calon lokasi dan garis pantai: sekolah, masjid, kantor pemerintah, shelter).
                     Data © kontributor OpenStreetMap, lisensi ODbL.
                 </li>
                 <li>
@@ -209,14 +207,14 @@ export default function Tentang() {
                     <a className="underline" href="https://platform.deepseek.com/" target="_blank" rel="noreferrer">
                     platform.deepseek.com
                     </a>{" "}
-                    (AI yang menjelaskan skor dan menyusun rencana evakuasi).
+                    (memilih prioritas tips rumah dan peran keluarga).
                 </li>
                 <li>
                     <strong>Tile peta</strong>: OpenStreetMap via Leaflet. © OpenStreetMap contributors,
                     lisensi ODbL.
                 </li>
                 <li>
-                    <strong>Data titik aman Bengkulu</strong>: 3.148 tempat beserta ketinggian, tersimpan
+                    <strong>Data kandidat lokasi Bengkulu</strong>: 3.148 tempat beserta ketinggian, tersimpan
                     di repo (<code className="font-mono">src/data/titik-bengkulu.json</code>), diambil
                     dari OpenStreetMap via Overpass dan Open-Meteo.
                 </li>
@@ -232,12 +230,13 @@ export default function Tentang() {
                 </li>
                 <li>
                     Data gempa hanya 15 kejadian M5+ terakhir dari BMKG; ketinggian berasal
-                    dari model elevasi Open-Meteo (bukan survei lapangan); kelengkapan titik
-                    aman tergantung data OpenStreetMap.
+                    dari model elevasi Open-Meteo. Kelengkapan kandidat lokasi bergantung pada OpenStreetMap.
                 </li>
                 <li>
-                    Rencana evakuasi di situs ini adalah panduan umum. Saat bencana terjadi,
-                    ikuti arahan resmi BPBD dan otoritas setempat.
+                    Arahan darurat mengacu pada{" "}
+                    <a className="underline" href="https://www.bmkg.go.id/gempabumi/mitigasi/edukasi-gempabumi-tsunami">
+                        panduan gempa bumi dan tsunami BMKG
+                    </a>. Saat bencana terjadi, ikuti arahan resmi BPBD dan otoritas setempat.
                 </li>
             </ul>
 
@@ -245,18 +244,14 @@ export default function Tentang() {
             <h2 className="mt-14 text-[28px]">Penggunaan AI</h2>
             <ul className="mt-2 list-disc space-y-2 pl-5">
                 <li>
-                    AI (DeepSeek) hanya <strong>menjelaskan skor</strong> dan{" "}
-                    <strong>menyusun rencana</strong> dalam bahasa manusia, berdasarkan data
-                    di atas.
+                    DeepSeek memilih satu tips rumah dan satu peran keluarga untuk ditampilkan lebih dulu.
                 </li>
                 <li>
-                    Skor <strong>tidak</strong> dihitung AI, skor dihitung dengan rumus
-                    deterministik di atas. AI juga <strong>tidak boleh</strong> menyebut
-                    tempat atau angka yang tidak ada di data.
+                    Aplikasi menghitung skor dan menetapkan arahan darurat. Server hanya menerima nomor
+                    pilihan yang cocok dengan daftar persiapan yang disediakan aplikasi.
                 </li>
                 <li>
-                    Jika AI gagal atau timeout, rencana tetap tampil dari template, halaman
-                    tidak pernah kosong.
+                    Jika DeepSeek gagal, daftar tampil dalam urutan bawaan.
                 </li>
             </ul>
         </article>

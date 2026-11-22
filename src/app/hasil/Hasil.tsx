@@ -48,7 +48,7 @@ function keadaanAwal(): Keadaan {
   return { tahap: "memuat", input };
 }
 
-const PESAN_MUAT = ["Menghitung skor risiko…", "Mencari titik aman di sekitar rumah…", "Menyusun rencana keluarga…"];
+const PESAN_MUAT = ["Menghitung skor risiko…", "Mencari kandidat lokasi di sekitar rumah…", "Menyusun rencana keluarga…"];
 
 export default function Hasil() {
   const [k, setK] = useState<Keadaan>(keadaanAwal);
@@ -138,27 +138,22 @@ export default function Hasil() {
 }
 
 function teksBagikan(d: HasilRencana) {
-  const t = d.titik.find((x) => x.id === d.rencana.titik_tujuan_id) ?? d.titik[0];
   return [
     `Rencana siaga ${d.input.namaKeluarga ? `Keluarga ${d.input.namaKeluarga}` : "keluarga kita"} (SiagaKu)`,
     `Skor risiko rumah: ${d.skor.total}/100 (${d.skor.kategori})`,
-    t ? `Jika gempa kuat > 20 detik: jalan ke ${t.arah.nama} menuju ${t.nama} (${fmt(t.jarakKm)} km, ±${t.menit} menit). Jangan tunggu sirene.` : "",
     ...d.rencana.langkah_darurat.map((l, i) => `${i + 1}. ${l}`),
     `Buat rencanamu sendiri: ${window.location.origin}/cek`,
   ]
-    .filter(Boolean)
     .join("\n");
 }
 
 function TampilanHasil({ data: d }: { data: HasilRencana }) {
   const { input, skor, titik, rencana } = d;
-  const tujuan = titik.find((t) => t.id === rencana.titik_tujuan_id) ?? titik[0];
   const warna = warnaKategori(skor.kategori);
   const contoh = input.namaKeluarga === CONTOH_BENGKULU.namaKeluarga && input.lokasi.lat === CONTOH_BENGKULU.lokasi.lat;
   const judul = contoh
     ? "Contoh rencana: Kota Bengkulu"
     : `Rencana siaga ${input.namaKeluarga ? `Keluarga ${input.namaKeluarga}` : "keluargamu"}`;
-  const dekatPantai = pesisir(input);
   const faktorBesar = [...skor.rincian].sort((a, b) => b.poin / b.maks - a.poin / a.maks)[0];
 
   return (
@@ -194,7 +189,7 @@ function TampilanHasil({ data: d }: { data: HasilRencana }) {
       <div className="mt-5 grid border-2 border-ink bg-white md:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="relative z-0 min-h-[380px] border-b-2 border-ink md:min-h-[540px] md:border-r-2 md:border-b-0">
           <div className="absolute inset-0">
-            <ResultMap rumah={input.lokasi} titik={titik} tujuanId={rencana.titik_tujuan_id} />
+            <ResultMap rumah={input.lokasi} titik={titik} />
           </div>
           <div className="absolute bottom-3 left-3 z-[500] grid gap-1 border-2 border-ink bg-white px-3 py-2 text-[13px]">
             <span>
@@ -203,7 +198,7 @@ function TampilanHasil({ data: d }: { data: HasilRencana }) {
             </span>
             <span>
               <i className="mr-2 inline-block size-3 bg-sign align-[-1px]" />
-              Titik aman
+              Kandidat lokasi
             </span>
           </div>
         </div>
@@ -268,13 +263,18 @@ function TampilanHasil({ data: d }: { data: HasilRencana }) {
             Lihat rumus dan sumber data
           </Link>
 
-          <div className="border-t-2 border-ink" aria-label="Titik aman terdekat">
+          <div className="border-t-2 border-ink" aria-label="Kandidat lokasi dari peta">
+            <div className="px-5 py-4">
+              <h2 className="font-sign text-xl font-bold">Kandidat lokasi dari peta</h2>
+              <p className="text-sm text-ink-2">
+                Status evakuasi dan akses belum terverifikasi. Cek ke BPBD saat menyiapkan rencana.
+              </p>
+            </div>
             {titik.length === 0 ? (
               <p className="px-5 py-4 text-[15px] text-ink-2">
                 {d.sumberTitik === "tidak-tersedia"
                   ? "Data peta tempat umum sedang tidak bisa diambil. "
-                  : "Tidak ada tempat umum yang cukup tinggi dalam radius 5 km. "}
-                Bergeraklah menjauhi pantai minimal 3 km atau ke tempat dengan ketinggian 30 m ke atas.
+                  : "Belum ditemukan kandidat yang memenuhi kriteria di sekitar lokasi ini."}
               </p>
             ) : (
               titik.map((t, i) => (
@@ -286,7 +286,7 @@ function TampilanHasil({ data: d }: { data: HasilRencana }) {
                       {t.jenis} · {fmt(t.elevasiM, 0)} m dpl · {t.arah.nama}
                     </p>
                     {t.kelas === "lebih-tinggi" && (
-                      <p className="text-[13px] font-medium text-ink-2">Di bawah 30 m: naik ke lantai paling atas</p>
+                      <p className="text-[13px] font-medium text-ink-2">Cadangan pemetaan · di bawah ambang tempat tinggi</p>
                     )}
                   </div>
                   <p className="text-right font-mono text-[17px] leading-tight font-semibold">
@@ -307,7 +307,7 @@ function TampilanHasil({ data: d }: { data: HasilRencana }) {
               Rencana keluarga
             </h2>
             <span className="text-right text-[13px] text-ink-3">
-              {d.sumberRencana === "ai" ? "Ditulis AI dari data di atas" : "Disusun dari template (AI sedang tidak tersedia)"}
+              {d.sumberRencana === "ai" ? "Prioritas persiapan dipilih AI" : "Prioritas persiapan bawaan"}
             </span>
           </div>
           <p className="max-w-[62ch] text-lg leading-relaxed">{rencana.ringkasan}</p>
@@ -320,9 +320,6 @@ function TampilanHasil({ data: d }: { data: HasilRencana }) {
               </li>
             ))}
           </ol>
-
-          <h3 className="mt-8 mb-2 text-2xl">Rute</h3>
-          <p className="max-w-[62ch] text-ink-2">{rencana.rute_narasi}</p>
 
           <table className="mt-8 w-full border-collapse">
             <caption className="pb-2.5 text-left font-sign text-2xl font-bold">Siapa mengerjakan apa</caption>
@@ -354,58 +351,27 @@ function TampilanHasil({ data: d }: { data: HasilRencana }) {
       </div>
 
       <p className="mt-10 max-w-[80ch] text-[13px] text-ink-3">
-        {dekatPantai ? "Perkiraan waktu tiba tsunami di pesisir Bengkulu bisa kurang dari 30 menit. " : ""}
-        Skor bersifat indikatif dan bukan pengganti kajian resmi BPBD. Titik aman dari OpenStreetMap
-        {d.sumberTitik === "bawaan" ? " (data diunduh November 2026)" : ""}; pastikan tempat tersebut bisa dimasuki saat darurat.
-        {tujuan ? "" : ""}
+        Skor bersifat indikatif. Kandidat lokasi diambil dari OpenStreetMap
+        {d.sumberTitik === "bawaan" ? " (data diunduh November 2026)." : "."} Jarak dan perkiraan waktu
+        jalan kaki berbasis garis lurus.
       </p>
     </div>
   );
 }
 
 function PapanRambu({ d }: { d: HasilRencana }) {
-  const tujuan = d.titik.find((t) => t.id === d.rencana.titik_tujuan_id) ?? d.titik[0];
   const dekatPantai = pesisir(d.input);
-  const judul = !dekatPantai
-    ? "Setelah gempa: keluar ke ruang terbuka"
-    : tujuan
-      ? `Gempa lebih dari 20 detik: jalan ke ${tujuan.arah.nama}`
-      : "Gempa lebih dari 20 detik: jauhi pantai";
-  const sub = dekatPantai
-    ? tujuan?.kelas === "lebih-tinggi"
-      ? "Jangan tunggu sirene. Begitu guncangan berhenti, berangkat, lalu naik ke lantai paling atas."
-      : "Jangan tunggu sirene. Begitu guncangan berhenti, ambil tas siaga dan berangkat."
-    : "Jauhi kaca, tiang listrik, dan bangunan retak. Waspadai gempa susulan.";
+  const judul = dekatPantai
+    ? "Gempa kuat atau lama di pesisir: segera evakuasi"
+    : "Setelah gempa: keluar ke ruang terbuka";
   return (
     <div
       role="note"
       aria-label="Instruksi evakuasi utama"
-      className="grid grid-cols-[auto_1fr] border-4 border-sign bg-sign text-white outline-[3px] -outline-offset-[10px] outline-white md:grid-cols-[auto_1fr_auto]"
+      className="border-4 border-sign bg-sign px-6 py-5 text-white outline-[3px] -outline-offset-[10px] outline-white sm:px-8 sm:py-6"
     >
-      <div className="grid place-items-center py-4 pr-1.5 pl-4 sm:p-5 sm:pl-6" aria-hidden="true">
-        <svg viewBox="0 0 100 100" className="size-[60px] sm:size-24" style={{ transform: `rotate(${(tujuan && dekatPantai ? tujuan.bearing : 90) - 90}deg)` }}>
-          <path d="M8 50h62M46 18l34 32-34 32" stroke="#fff" strokeWidth="16" fill="none" strokeLinecap="square" />
-        </svg>
-      </div>
-      <div className="self-center py-4 pr-4 pl-1 sm:py-5">
-        <h2 className="text-[clamp(26px,3.6vw,46px)] leading-none tracking-wide uppercase">{judul}</h2>
-        <p className="mt-2.5 max-w-[60ch] text-[15px] opacity-95 sm:text-[17px]">{sub}</p>
-      </div>
-      {tujuan && dekatPantai && (
-        <div className="col-span-2 mx-3.5 mb-3.5 flex min-w-[230px] flex-col justify-center bg-white px-4 py-3.5 text-ink md:col-span-1 md:my-3.5 md:ml-0">
-          <span className="text-[13px] text-ink-3">Tujuan utama</span>
-          <b className="mt-0.5 mb-2 font-sign text-2xl leading-tight">{tujuan.nama}</b>
-          <dl className="grid grid-cols-[auto_auto] gap-x-3 gap-y-0.5 text-sm">
-            <dt className="text-ink-3">Jarak</dt>
-            <dd className="text-right font-mono font-semibold">{fmt(tujuan.jarakKm)} km</dd>
-            <dt className="text-ink-3">Ketinggian</dt>
-            <dd className="text-right font-mono font-semibold">{fmt(tujuan.elevasiM, 0)} m</dd>
-            <dt className="text-ink-3">Jalan kaki</dt>
-            <dd className="text-right font-mono font-semibold">±{tujuan.menit} mnt</dd>
-          </dl>
-          {tujuan.kelas === "lebih-tinggi" && <p className="mt-2 text-[13px] font-medium">Naik ke lantai paling atas</p>}
-        </div>
-      )}
+      <h2 className="text-[clamp(26px,3.6vw,46px)] leading-none tracking-wide uppercase">{judul}</h2>
+      <p className="mt-2.5 max-w-[60ch] text-[15px] opacity-95 sm:text-[17px]">{d.rencana.rute_narasi}</p>
     </div>
   );
 }

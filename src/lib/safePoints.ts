@@ -15,8 +15,8 @@ export type Kandidat = {
 
 /**
  * "tinggi": memenuhi syarat ketinggian (≥ 30 m atau ≥ rumah + 15 m).
- * "lebih-tinggi": cadangan bila tempat tinggi kurang — lebih tinggi dari rumah dan
- * lebih jauh dari pantai, tapi di bawah syarat → naik ke lantai atas (evakuasi vertikal).
+ * "lebih-tinggi": cadangan pemetaan di bawah ambang tingkat 1 yang lebih tinggi
+ * dari rumah dan lebih jauh dari pantai.
  */
 export type KelasTitik = "tinggi" | "lebih-tinggi";
 
@@ -73,9 +73,10 @@ export function pilihTitikAman(kandidat: Kandidat[], rumah: Rumah, lambat: boole
   if (tinggi.length >= jumlah || rumah.elevasiM === null) return tinggi;
 
   const pantaiRumah = rumah.jarakPantaiKm ?? null;
+  if (pantaiRumah === null) return tinggi;
   const cadangan = unik
     .filter((c) => (c.elevasiM as number) < batas && (c.elevasiM as number) >= (rumah.elevasiM as number) + SELISIH_CADANGAN_M)
-    .filter((c) => pantaiRumah === null || c.jarakPantaiKm == null || c.jarakPantaiKm > pantaiRumah)
+    .filter((c) => c.jarakPantaiKm != null && c.jarakPantaiKm > pantaiRumah)
     .map((c) => lengkapi(c, "lebih-tinggi"))
     .filter((t) => t.jarakKm <= RADIUS_CADANGAN_KM)
     // yang terdekat dulu — waktu tempuh paling menentukan saat tsunami

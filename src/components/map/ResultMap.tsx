@@ -3,7 +3,7 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect } from "react";
-import { MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, Tooltip, useMap } from "react-leaflet";
 import type { LatLon } from "@/lib/geo";
 import { useTerpasang } from "./useTerpasang";
 import type { TitikAman } from "@/lib/safePoints";
@@ -39,10 +39,9 @@ function Bingkai({ titik }: { titik: LatLon[] }) {
   return null;
 }
 
-export default function ResultMap({ rumah, titik, tujuanId }: { rumah: LatLon; titik: TitikAman[]; tujuanId: string | null }) {
+export default function ResultMap({ rumah, titik }: { rumah: LatLon; titik: TitikAman[] }) {
   const terpasang = useTerpasang();
   if (!terpasang) return <div className="size-full bg-ground" aria-hidden="true" />;
-  const tujuan = titik.find((t) => t.id === tujuanId) ?? titik[0];
   return (
     <MapContainer center={[rumah.lat, rumah.lon]} zoom={14} scrollWheelZoom={false} className="size-full">
       <TileLayer
@@ -60,16 +59,6 @@ export default function ResultMap({ rumah, titik, tujuanId }: { rumah: LatLon; t
           </Tooltip>
         </Marker>
       ))}
-      {tujuan && (
-        <Polyline
-          positions={[
-            [rumah.lat, rumah.lon],
-            [tujuan.lat, tujuan.lon],
-          ]}
-          pathOptions={{ color: "#00703C", weight: 5, dashArray: "10 8" }}
-        />
-      )}
-
       <Bingkai titik={[rumah, ...titik]} />
     </MapContainer>
   );

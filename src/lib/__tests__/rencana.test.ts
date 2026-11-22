@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { arahMataAngin } from "../geo";
 import { CONTOH_BENGKULU } from "../input";
 import { periksaRencanaAI, rencanaTemplate, RencanaSchema, tasDasar, tasTambahanDasar } from "../rencana";
-import type { TitikAman } from "../safePoints";
 import { hitungSkor, keInputSkorDummy } from "./helper";
-
-const TITIK: TitikAman[] = [
-  { id: "osm-n1", nama: "SMP Negeri 14", jenis: "Sekolah", lat: -3.79, lon: 102.28, elevasiM: 34, jarakKm: 1.8, bearing: 45, arah: arahMataAngin(45), menit: 35, kelas: "tinggi" },
-  { id: "osm-w2", nama: "Masjid Al-Hidayah", jenis: "Masjid", lat: -3.8, lon: 102.29, elevasiM: 31, jarakKm: 2.3, bearing: 90, arah: arahMataAngin(90), menit: 45, kelas: "tinggi" },
-];
 
 const input = CONTOH_BENGKULU;
 const skor = hitungSkor(keInputSkorDummy(input));
@@ -34,47 +27,51 @@ describe("tasTambahanDasar", () => {
 });
 
 describe("rencanaTemplate", () => {
-  it("selalu valid terhadap skema dan memakai titik pertama", () => {
-    const r = rencanaTemplate({ input, skor, titik: TITIK });
+  it("tetap valid dan tidak menjadikan kandidat OSM sebagai tujuan", () => {
+    const r = rencanaTemplate({ input, skor });
     expect(RencanaSchema.safeParse(r).success).toBe(true);
-    expect(r.titik_tujuan_id).toBe("osm-n1");
-    expect(r.rute_narasi).toContain("SMP Negeri 14");
-    expect(r.rute_narasi).toContain("Masjid Al-Hidayah");
+    expect(r.titik_tujuan_id).toBeNull();
+    expect(r.rute_narasi).toContain("evakuasi resmi");
+    expect(r.langkah_darurat).toContain(r.rute_narasi);
+    expect(r.rute_narasi).toContain("kuat atau lama");
     expect(r.ringkasan).toContain(`${skor.total} dari 100`);
   });
 
-  it("tanpa titik aman → saran umum, tetap valid", () => {
-    const r = rencanaTemplate({ input, skor, titik: [] });
+  it("menerima catatan obat sepanjang batas isian formulir", () => {
+    const r = rencanaTemplate({ input: { ...input, obat: "x".repeat(200) }, skor });
     expect(RencanaSchema.safeParse(r).success).toBe(true);
     expect(r.titik_tujuan_id).toBeNull();
-    expect(r.rute_narasi).toContain("3 km");
+    expect(r.rute_narasi).toContain("tempat yang lebih tinggi");
   });
 
   it("rumah jauh dari pantai tidak disuruh lari dari tsunami", () => {
-    const r = rencanaTemplate({ input: { ...input, jarakPantai: "gt5" }, skor, titik: TITIK });
+    const r = rencanaTemplate({ input: { ...input, jarakPantai: "gt5" }, skor });
     expect(r.ringkasan).toContain("jauh dari pantai");
-    expect(r.langkah_darurat.join(" ")).toContain("ruang terbuka");
+    expect(r.langkah_darurat).toContain(r.rute_narasi);
+    expect(r.rute_narasi).toContain("ruang terbuka");
+    expect(r.rute_narasi).not.toContain("pantai");
   });
 });
 
 describe("periksaRencanaAI", () => {
-  const baik = rencanaTemplate({ input, skor, titik: TITIK });
+  const baik = rencanaTemplate({ input, skor });
 
-  it("menerima rencana dengan titik dari daftar", () => {
-    expect(periksaRencanaAI({ ...baik, titik_tujuan_id: "osm-w2" }, TITIK)?.titik_tujuan_id).toBe("osm-w2");
-  });
-
-  it("menolak titik karangan", () => {
-    expect(periksaRencanaAI({ ...baik, titik_tujuan_id: "osm-palsu" }, TITIK)).toBeNull();
-    expect(periksaRencanaAI({ ...baik, titik_tujuan_id: null }, TITIK)).toBeNull();
+  it("hanya memindahkan prioritas dari daftar sistem ke urutan pertama", () => {
+    const r = periksaRencanaAI({ prioritas_tips: 1, prioritas_peran: 1 }, baik);
+    expect(r).toEqual({
+      ...baik,
+      tips_rumah: [baik.tips_rumah[1], baik.tips_rumah[0], ...baik.tips_rumah.slice(2)],
+      peran_anggota: [baik.peran_anggota[1], baik.peran_anggota[0], ...baik.peran_anggota.slice(2)],
+    });
   });
 
   it("menolak bentuk JSON yang salah", () => {
-    expect(periksaRencanaAI({ ringkasan: "x" }, TITIK)).toBeNull();
-    expect(periksaRencanaAI("bukan objek", TITIK)).toBeNull();
+    expect(periksaRencanaAI({ ringkasan: "x" }, baik)).toBeNull();
+    expect(periksaRencanaAI("bukan objek", baik)).toBeNull();
   });
 
-  it("tanpa daftar titik → titik_tujuan_id dipaksa null", () => {
-    expect(periksaRencanaAI({ ...baik, titik_tujuan_id: "osm-n1" }, [])?.titik_tujuan_id).toBeNull();
+  it("menolak indeks di luar daftar dan respons dengan kolom bebas", () => {
+    expect(periksaRencanaAI({ prioritas_tips: 99, prioritas_peran: 0 }, baik)).toBeNull();
+    expect(periksaRencanaAI({ prioritas_tips: 0, prioritas_peran: 0, ringkasan: "teks baru" }, baik)).toBeNull();
   });
 });

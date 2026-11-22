@@ -235,7 +235,7 @@ export default function Wizard() {
             Di mana rumahmu?
           </h1>
           <p className="max-w-[60ch] text-ink-2">
-            Geser pin ke atap rumahmu. Makin tepat, makin akurat ketinggian dan titik aman yang kami cari.
+            Geser pin ke atap rumahmu supaya perkiraan ketinggian dan jarak lebih akurat.
           </p>
 
           <div className="mt-6 border-2 border-ink bg-white">

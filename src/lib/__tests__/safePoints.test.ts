@@ -93,6 +93,13 @@ describe("pilihTitikAman — tingkat 2 (cadangan lebih tinggi)", () => {
     expect(pilihTitikAman([k("cad", 0.01, 0, 23, 2)], { ...rumah, elevasiM: null }, false)).toEqual([]);
   });
 
+  it("memerlukan bukti kandidat cadangan lebih jauh dari pantai", () => {
+    const diketahui = k("diketahui", 0.01, 0, 23, 2);
+    const tidakDiketahui = k("tanpa-jarak", 0.005, 0, 23);
+    expect(pilihTitikAman([tidakDiketahui, diketahui], rumah, false).map((t) => t.id)).toEqual(["diketahui"]);
+    expect(pilihTitikAman([diketahui], { ...RUMAH, elevasiM: rumah.elevasiM }, false)).toEqual([]);
+  });
+
   it("tidak ada kandidat → daftar kosong", () => {
     expect(pilihTitikAman([], rumah, false)).toEqual([]);
   });

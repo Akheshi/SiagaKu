@@ -2,7 +2,7 @@
 
 **Rencana siaga gempa & tsunami untuk satu rumah tangga — bukan untuk satu kota.**
 
-Tandai rumahmu di peta, ceritakan siapa saja yang tinggal di sana, lalu dalam kurang dari satu menit dapatkan skor risiko yang bisa ditelusuri, titik aman terdekat, rencana evakuasi keluarga, dan isi tas siaga.
+Tandai rumahmu di peta dan isi kondisi keluarga untuk melihat rincian skor risiko, kandidat lokasi sekitar, rencana evakuasi keluarga, dan isi tas siaga.
 
 - **Website:** https://siagaku.vercel.app
 - **Coba langsung tanpa isi formulir:** https://siagaku.vercel.app/hasil?contoh=bengkulu
@@ -25,9 +25,9 @@ Kebanyakan keluarga tidak tahu ketinggian rumahnya, tidak tahu jarak pastinya ke
 | **Info gempa terkini BMKG** | Gempa terbaru di beranda, diperbarui tiap ±1 menit |
 | **Pilih lokasi rumah** | GPS atau geser pin di peta; ketinggian (Open-Meteo) dan **jarak ke pantai dihitung otomatis** dari garis pantai OpenStreetMap |
 | **Skor risiko 0–100 yang transparan** | Rumus terbuka dari 6 faktor, setiap poin ditampilkan beserta alasannya |
-| **Titik aman terdekat** | Sekolah, masjid, kantor pemerintah, rumah sakit, shelter dari OpenStreetMap yang cukup tinggi; jarak, arah mata angin, dan waktu jalan kaki |
-| **Papan rambu evakuasi** | Instruksi utama bergaya rambu jalur evakuasi, panah menunjuk arah titik tujuan |
-| **Rencana keluarga oleh AI** | Langkah darurat, rute, peran tiap anggota, tips rumah — ditulis AI **hanya dari data yang dihitung sistem** |
+| **Kandidat lokasi dari peta** | Tempat umum dari OpenStreetMap yang disaring berdasarkan ketinggian dan jarak. Status evakuasi serta akses perlu dikonfirmasi ke BPBD |
+| **Papan rambu evakuasi** | Arahan sesuai kondisi pesisir atau nonpesisir, berdasarkan panduan BMKG |
+| **Rencana keluarga** | Aplikasi menyusun langkah, tugas, dan tips. DeepSeek memilih satu tips dan satu peran untuk dibahas lebih dulu |
 | **Checklist tas siaga** | Isi dasar + kebutuhan khusus (lansia, balita, ibu hamil, disabilitas, obat rutin), tersimpan di perangkat |
 | **Bagikan ke WhatsApp** | Ringkasan rencana untuk grup keluarga |
 | **Tanpa akun** | Tidak ada login, tidak ada database; data hanya di perangkat pengguna |
@@ -42,20 +42,22 @@ Data keluarga ─┐
                ▼
         Skor risiko (rumus deterministik, lib/score.ts)
                │
-        Titik aman (OSM + ketinggian, aturan dua tingkat, lib/safePoints.ts)
+        Kandidat lokasi (OSM + ketinggian, lib/safePoints.ts)
                │
                ▼
-        DeepSeek menyusun rencana dalam JSON ──► divalidasi (zod)
-               │                                   │ gagal / tidak valid / titik karangan
+        Rencana dari aplikasi (lib/rencana.ts)
+               │
+        DeepSeek memilih prioritas ─────────► indeks divalidasi (zod)
+               │                                   │ gagal / tidak valid
                ▼                                   ▼
-        Halaman hasil  ◄──────────────────  template cadangan (lib/rencana.ts)
+        Halaman hasil  ◄──────────────────  urutan persiapan bawaan
 ```
 
 ### Prinsip AI di dalam produk
 
-1. **AI tidak menghitung angka.** Skor dihitung rumus; AI hanya menjelaskan.
-2. **AI tidak mengarang tempat.** AI hanya boleh merujuk titik aman lewat `id` dari daftar sistem. Jawaban yang menyebut titik di luar daftar **ditolak** dan diganti template.
-3. **Selalu ada cadangan.** Timeout 20 detik, dicoba 2 kali; bila gagal, rencana disusun template dari data yang sama. Pengguna tidak pernah melihat layar kosong.
+1. Skor dan arahan darurat disusun aplikasi. Panduan darurat mengacu pada [edukasi BMKG](https://www.bmkg.go.id/gempabumi/mitigasi/edukasi-gempabumi-tsunami).
+2. DeepSeek menerima opsi persiapan yang dibuat aplikasi. Server hanya menerima dua indeks yang sesuai dengan daftar. Nama keluarga, koordinat rumah, dan tulisan obat rutin tidak dikirim ke DeepSeek.
+3. Jika AI gagal atau melampaui batas 8 detik, rencana tampil dengan urutan persiapan bawaan.
 
 ## Metodologi skor (ringkas)
 
@@ -70,9 +72,9 @@ Data keluarga ─┐
 
 Kategori: 0–39 Rendah · 40–59 Sedang · 60–79 Tinggi · 80–100 Sangat tinggi. Detail di halaman [/tentang](https://siagaku.vercel.app/tentang).
 
-**Titik aman dua tingkat.** Saat membangun, kami menemukan Kota Bengkulu adalah dataran rendah: dalam 5 km dari titik contoh, tempat umum tertinggi hanya 24 m, sedangkan tempat ≥ 30 m baru ada di jarak 7–10 km — terlalu jauh dijalani sebelum tsunami tiba. Karena itu:
+**Kandidat lokasi dua tingkat.** Data contoh dari Kota Bengkulu menunjukkan sedikit tempat umum di ketinggian ≥ 30 m dalam radius 5 km. Peta menampilkan kandidat untuk diperiksa saat menyusun rencana keluarga.
 1. **Tempat tinggi** — ≥ 30 m (atau ≥ rumah + 15 m) dalam 5 km, diutamakan.
-2. **Cadangan evakuasi vertikal** — bila tempat tinggi kurang dari 3: dalam 3 km, minimal 5 m lebih tinggi dari rumah, dan lebih jauh dari pantai; ditandai *"naik ke lantai paling atas"*.
+2. **Cadangan pemetaan** — jika tingkat pertama kurang dari 3 kandidat. Radius 3 km, minimal 5 m lebih tinggi dari rumah, serta terbukti lebih jauh dari pantai berdasarkan data jarak rumah dan kandidat.
 
 > Skor bersifat indikatif berdasarkan faktor yang lazim dipakai BNPB/InaRISK, **bukan pengganti kajian resmi BPBD**.
 
@@ -137,7 +139,7 @@ scripts/                  pengunduh data
 ## Batasan & pengembangan lanjutan
 
 - Ketinggian dari model elevasi global (resolusi ±90 m), bukan survei lapangan.
-- Data titik aman bawaan baru mencakup Provinsi Bengkulu; daerah lain bergantung pada Overpass yang kadang lambat.
+- Data kandidat bawaan mencakup Provinsi Bengkulu. Di daerah lain, kelengkapan data bergantung pada Overpass.
 - Belum mempertimbangkan apakah bangunan tujuan benar-benar bisa dimasuki saat darurat atau berapa lantainya.
 - Rute masih garis lurus + estimasi; belum memakai jaringan jalan.
 - Lanjutan: data TES (tempat evakuasi sementara) resmi dari BPBD, rute jalan kaki nyata, mode luring (PWA), dan versi untuk sekolah.
@@ -151,7 +153,7 @@ Bagian ini wajib menurut panduan lomba.
 - **OpenAI Codex** — asisten coding cadangan saat Claude Code mencapai batas pemakaian.
 
 **AI di dalam produk**
-- **DeepSeek** (`deepseek-chat`) — menyusun teks rencana keluarga dari data yang dihitung sistem; dibatasi dan divalidasi seperti dijelaskan di atas.
+- **DeepSeek** (`deepseek-chat`) — memilih prioritas tips dan peran keluarga dari daftar aplikasi.
 
 **Template**
 - Proyek dibuat dari `create-next-app` (Next.js). Tidak memakai template UI siap pakai; tampilan dirancang sendiri dengan konsep "bahasa rambu evakuasi".

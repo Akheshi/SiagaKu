@@ -76,9 +76,7 @@ export default function Lembar() {
   }
 
   const d = k.data;
-  const { input, skor, titik, rencana } = d;
-  const tujuan = titik.find((t) => t.id === rencana.titik_tujuan_id) ?? titik[0];
-  const cadangan = titik.filter((t) => t !== tujuan);
+  const { input, skor, rencana } = d;
   const centang = baca<Record<string, boolean>>(KUNCI_TAS) ?? {};
   const tas = [
     ...d.tasDasar,
@@ -122,7 +120,7 @@ export default function Lembar() {
         </header>
 
         <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">
-          {pesisir(input) ? "Jika gempa terasa kuat atau lebih dari 20 detik" : "Saat dan setelah gempa"}
+          {pesisir(input) ? "Jika gempa terasa kuat atau lama di pesisir" : "Saat dan setelah gempa"}
         </h2>
         <ol className="list-decimal pl-6">
           {rencana.langkah_darurat.map((l, i) => (
@@ -131,25 +129,6 @@ export default function Lembar() {
             </li>
           ))}
         </ol>
-
-        {tujuan && (
-          <>
-            <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">Tujuan evakuasi</h2>
-            <table className="w-full border-collapse text-[14.5px]">
-              <tbody>
-                {[tujuan, ...cadangan].map((t, i) => (
-                  <tr key={t.id} className="border-b border-[#cdbf9f] align-top">
-                    <th className="w-[30%] py-1.5 pr-2 text-left font-semibold">{i === 0 ? "Utama" : `Cadangan ${i}`}</th>
-                    <td className="py-1.5">
-                      <b>{t.nama}</b> — {fmt(t.jarakKm)} km ke arah {t.arah.nama}, {fmt(t.elevasiM, 0)} m, ±{t.menit} menit jalan kaki
-                      {t.kelas === "lebih-tinggi" ? ". Naik ke lantai paling atas." : "."}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
 
         <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">Tugas tiap anggota</h2>
         <table className="w-full border-collapse text-[14.5px]">
@@ -177,7 +156,7 @@ export default function Lembar() {
         <table className="w-full border-collapse text-[14.5px]">
           <tbody>
             <tr className="border-b border-[#cdbf9f]">
-              <th className="w-[45%] py-1.5 pr-2 text-left font-semibold">Panggilan darurat nasional</th>
+              <th className="w-[45%] py-1.5 pr-2 text-left font-semibold">Panggilan darurat jika tersedia di daerahmu</th>
               <td className="py-1.5 font-mono">112</td>
             </tr>
             <tr className="border-b border-[#cdbf9f]">
@@ -189,8 +168,12 @@ export default function Lembar() {
               <td className="py-1.5">…………………………………</td>
             </tr>
             <tr className="border-b border-[#cdbf9f]">
+              <th className="py-1.5 pr-2 text-left font-semibold">Lokasi evakuasi yang dikonfirmasi BPBD</th>
+              <td className="py-1.5">…………………………………</td>
+            </tr>
+            <tr className="border-b border-[#cdbf9f]">
               <th className="py-1.5 pr-2 text-left font-semibold">Titik kumpul jika terpisah</th>
-              <td className="py-1.5">{tujuan ? `${tujuan.nama}, di depan gerbang` : "…………………………………"}</td>
+              <td className="py-1.5">…………………………………</td>
             </tr>
           </tbody>
         </table>
