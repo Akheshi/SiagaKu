@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
 import type { LatLon } from "@/lib/geo";
 import type { TitikAman } from "@/lib/safePoints";
-import { PasUkuran } from "./MapPicker";
+
 
 const ikonRumah = L.divIcon({ className: "", html: '<div class="mk-home"></div>', iconSize: [22, 22], iconAnchor: [11, 11] });
 const ikonAman = (n: number) =>
@@ -16,11 +16,22 @@ function Bingkai({ titik }: { titik: LatLon[] }) {
   const map = useMap();
   const kunci = titik.map((p) => `${p.lat},${p.lon}`).join(";");
   useEffect(() => {
-    const t = setTimeout(() => {
+    // Bingkai ulang setiap ukuran kontainer berubah dan sudah > 0 (saat pertama dibuat
+    // kontainer bisa masih 0 px → fitBounds menghasilkan zoom maksimal).
+    const el = map.getContainer();
+    const bingkai = () => {
+      if (el.clientWidth === 0 || el.clientHeight === 0) return;
       map.invalidateSize();
-      if (titik.length > 1) map.fitBounds(L.latLngBounds(titik.map((p) => [p.lat, p.lon])), { padding: [36, 36] });
-    }, 0);
-    return () => clearTimeout(t);
+      if (titik.length > 1) map.fitBounds(L.latLngBounds(titik.map((p) => [p.lat, p.lon])), { padding: [36, 36], animate: false });
+      else map.setView([titik[0].lat, titik[0].lon], 15, { animate: false });
+    };
+    const ro = new ResizeObserver(bingkai);
+    ro.observe(el);
+    const t = setTimeout(bingkai, 0);
+    return () => {
+      clearTimeout(t);
+      ro.disconnect();
+    };
     // hanya saat daftar titik berubah
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, kunci]);
@@ -55,7 +66,7 @@ export default function ResultMap({ rumah, titik, tujuanId }: { rumah: LatLon; t
           pathOptions={{ color: "#00703C", weight: 5, dashArray: "10 8" }}
         />
       )}
-      <PasUkuran />
+
       <Bingkai titik={[rumah, ...titik]} />
     </MapContainer>
   );
