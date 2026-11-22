@@ -6,8 +6,8 @@ import type { TitikAman } from "../safePoints";
 import { hitungSkor, keInputSkorDummy } from "./helper";
 
 const TITIK: TitikAman[] = [
-  { id: "osm-n1", nama: "SMP Negeri 14", jenis: "Sekolah", lat: -3.79, lon: 102.28, elevasiM: 34, jarakKm: 1.8, bearing: 45, arah: arahMataAngin(45), menit: 35 },
-  { id: "osm-w2", nama: "Masjid Al-Hidayah", jenis: "Masjid", lat: -3.8, lon: 102.29, elevasiM: 31, jarakKm: 2.3, bearing: 90, arah: arahMataAngin(90), menit: 45 },
+  { id: "osm-n1", nama: "SMP Negeri 14", jenis: "Sekolah", lat: -3.79, lon: 102.28, elevasiM: 34, jarakKm: 1.8, bearing: 45, arah: arahMataAngin(45), menit: 35, kelas: "tinggi" },
+  { id: "osm-w2", nama: "Masjid Al-Hidayah", jenis: "Masjid", lat: -3.8, lon: 102.29, elevasiM: 31, jarakKm: 2.3, bearing: 90, arah: arahMataAngin(90), menit: 45, kelas: "tinggi" },
 ];
 
 const input = CONTOH_BENGKULU;

@@ -101,8 +101,11 @@ export function rencanaTemplate({ input, skor, titik }: Konteks): Rencana {
   if (input.kerentanan.disabilitas) peran_anggota.push({ siapa: "Pendamping disabilitas", tugas: "Membantu anggota disabilitas beserta alat bantunya." });
   if (input.penghuni > peran_anggota.length) peran_anggota.push({ siapa: "Anggota lainnya", tugas: "Membawa air dan senter, berjalan di belakang agar tidak ada yang tertinggal." });
 
+  const vertikal = tujuan?.kelas === "lebih-tinggi"
+    ? " Tempat ini di bawah 30 m, jadi begitu sampai segera naik ke lantai paling atas bangunan."
+    : "";
   const rute_narasi = tujuan
-    ? `Dari rumah, jalan kaki ke arah ${tujuan.arah.nama} sejauh sekitar ${angka(tujuan.jarakKm)} km menuju ${tujuan.nama}, yang berada ${angka(tujuan.elevasiM, 0)} m di atas laut. Perkiraan waktu tempuh ${tujuan.menit} menit. ${titik[1] ? `Jika jalan tertutup, pilih ${titik[1].nama} (${angka(titik[1].jarakKm)} km ke arah ${titik[1].arah.nama}).` : ""}`.trim()
+    ? `Dari rumah, jalan kaki ke arah ${tujuan.arah.nama} sejauh sekitar ${angka(tujuan.jarakKm)} km menuju ${tujuan.nama}, yang berada ${angka(tujuan.elevasiM, 0)} m di atas laut. Perkiraan waktu tempuh ${tujuan.menit} menit.${vertikal} ${titik[1] ? `Jika jalan tertutup, pilih ${titik[1].nama} (${angka(titik[1].jarakKm)} km ke arah ${titik[1].arah.nama}).` : ""}`.trim()
     : "Belum ditemukan tempat tinggi bernama di sekitar rumah. Bergeraklah menjauhi pantai minimal 3 km atau menuju tempat dengan ketinggian 30 m ke atas.";
 
   const tips_rumah: string[] = [];
