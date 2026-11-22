@@ -83,7 +83,7 @@ export async function QuakePanel() {
         <MuatQuakeMap terbaru={g} terkini={data.terkini} />
       </div>
       <p className="border-t border-line px-4 py-2 text-xs text-ink-3">
-        Titik merah besar: gempa terbaru · lingkaran: {data.terkini.length} gempa M5+ terakhir (makin besar makin kuat)
+        Titik merah besar: gempa terbaru · lingkaran: {data.terkini.length} gempa M5+ terakhir (makin besar makin kuat) · Peta © kontributor OpenStreetMap
       </p>
       {g.dirasakan && (
         <p className="border-t border-line px-4 py-3 text-sm text-ink-2">
