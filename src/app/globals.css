@@ -61,3 +61,34 @@
     animation: none !important;
   }
 }
+
+/* Penanda peta (Leaflet divIcon) — DESAIN-UI.md §3 */
+.mk-home {
+  width: 22px;
+  height: 22px;
+  background: #000;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px #000;
+}
+.mk-safe {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: var(--color-sign);
+  color: #fff;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px var(--color-sign-deep);
+  font: 600 14px/1 var(--font-mono);
+}
+.mk-quake {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-risk);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px var(--color-risk);
+}
+.leaflet-container {
+  font-family: var(--font-sans);
+}
