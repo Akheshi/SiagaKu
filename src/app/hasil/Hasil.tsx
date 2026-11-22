@@ -2,9 +2,10 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { buttonClass } from "@/components/ButtonLink";
-import { fmt, KUNCI_HASIL, KUNCI_TAS, kunciInput, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
+import { fmt, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
 import { CONTOH_BENGKULU, KUNCI_INPUT, InputRencana, type InputRencanaT } from "@/lib/input";
 
 const ResultMap = dynamic(() => import("@/components/map/ResultMap"), {
@@ -34,16 +35,16 @@ function baca<T>(kunci: string): T | null {
   }
 }
 
-function inputAwal(): InputRencanaT | null {
-  if (new URLSearchParams(window.location.search).get("contoh") === "bengkulu") return CONTOH_BENGKULU;
+function inputAwal(contoh: boolean): InputRencanaT | null {
+  if (contoh) return CONTOH_BENGKULU;
   const cek = InputRencana.safeParse(baca(KUNCI_INPUT));
   return cek.success ? cek.data : null;
 }
 
-function keadaanAwal(): Keadaan {
-  const input = inputAwal();
+function keadaanAwal(contoh: boolean, kunciHasil: string): Keadaan {
+  const input = inputAwal(contoh);
   if (!input) return { tahap: "kosong" };
-  const tersimpan = baca<{ kunci: string; data: HasilRencana }>(KUNCI_HASIL);
+  const tersimpan = baca<{ kunci: string; data: HasilRencana }>(kunciHasil);
   if (tersimpan?.kunci === kunciInput(input)) return { tahap: "siap", data: tersimpan.data };
   return { tahap: "memuat", input };
 }
@@ -51,7 +52,13 @@ function keadaanAwal(): Keadaan {
 const PESAN_MUAT = ["Menghitung skor risiko…", "Mencari kandidat lokasi di sekitar rumah…", "Menyusun rencana keluarga…"];
 
 export default function Hasil() {
-  const [k, setK] = useState<Keadaan>(keadaanAwal);
+  const contoh = useSearchParams().get("contoh") === "bengkulu";
+  return <IsiHasil key={String(contoh)} contoh={contoh} />;
+}
+
+function IsiHasil({ contoh }: { contoh: boolean }) {
+  const { hasil: kunciHasil, tas: kunciTas } = kunciPenyimpananRencana(contoh);
+  const [k, setK] = useState<Keadaan>(() => keadaanAwal(contoh, kunciHasil));
   const [pesanKe, setPesanKe] = useState(0);
 
   const muat = useCallback(async (input: InputRencanaT) => {
@@ -61,15 +68,17 @@ export default function Hasil() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.pesan || "Rencana belum bisa disusun.");
-      simpan(KUNCI_HASIL, { kunci: kunciInput(input), data });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.ok !== true) {
+        throw new Error(typeof data?.pesan === "string" ? data.pesan : "Layanan sedang bermasalah. Coba lagi sebentar.");
+      }
+      simpan(kunciHasil, { kunci: kunciInput(input), data });
       setK({ tahap: "siap", data });
     } catch (e) {
       const pesan = e instanceof TypeError ? "Koneksi internet terputus. Periksa jaringan, lalu coba lagi." : (e as Error).message;
       setK({ tahap: "galat", input, pesan });
     }
-  }, []);
+  }, [kunciHasil]);
 
   useEffect(() => {
     if (k.tahap !== "memuat") return;
@@ -134,7 +143,7 @@ export default function Hasil() {
     );
   }
 
-  return <TampilanHasil data={k.data} />;
+  return <TampilanHasil data={k.data} contoh={contoh} kunciTas={kunciTas} />;
 }
 
 function teksBagikan(d: HasilRencana) {
@@ -147,10 +156,9 @@ function teksBagikan(d: HasilRencana) {
     .join("\n");
 }
 
-function TampilanHasil({ data: d }: { data: HasilRencana }) {
+function TampilanHasil({ data: d, contoh, kunciTas }: { data: HasilRencana; contoh: boolean; kunciTas: string }) {
   const { input, skor, titik, rencana } = d;
   const warna = warnaKategori(skor.kategori);
-  const contoh = input.namaKeluarga === CONTOH_BENGKULU.namaKeluarga && input.lokasi.lat === CONTOH_BENGKULU.lokasi.lat;
   const judul = contoh
     ? "Contoh rencana: Kota Bengkulu"
     : `Rencana siaga ${input.namaKeluarga ? `Keluarga ${input.namaKeluarga}` : "keluargamu"}`;
@@ -347,7 +355,7 @@ function TampilanHasil({ data: d }: { data: HasilRencana }) {
           )}
         </section>
 
-        <TasSiaga d={d} />
+        <TasSiaga d={d} kunciTas={kunciTas} />
       </div>
 
       <p className="mt-10 max-w-[80ch] text-[13px] text-ink-3">
@@ -376,16 +384,16 @@ function PapanRambu({ d }: { d: HasilRencana }) {
   );
 }
 
-function TasSiaga({ d }: { d: HasilRencana }) {
+function TasSiaga({ d, kunciTas }: { d: HasilRencana; kunciTas: string }) {
   const tambahan = d.rencana.tas_siaga_tambahan.map((t, i) => ({ id: `t${i}-${t.barang}`, barang: t.barang, ket: t.alasan }));
   const semua = [...d.tasDasar, ...tambahan];
-  const [centang, setCentang] = useState<Record<string, boolean>>(() => baca<Record<string, boolean>>(KUNCI_TAS) ?? {});
+  const [centang, setCentang] = useState<Record<string, boolean>>(() => baca<Record<string, boolean>>(kunciTas) ?? {});
   const jumlah = semua.filter((x) => centang[x.id]).length;
 
   const ubah = (id: string, v: boolean) =>
     setCentang((c) => {
       const baru = { ...c, [id]: v };
-      simpan(KUNCI_TAS, baru);
+      simpan(kunciTas, baru);
       return baru;
     });
 

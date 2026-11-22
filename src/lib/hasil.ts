@@ -20,8 +20,11 @@ export type HasilRencana = {
 
 /** Hasil terakhir disimpan agar muat ulang tidak memanggil AI lagi (PRD F14). */
 // Buat ulang hasil lama agar arahan sebelumnya tidak ditampilkan atau dicetak.
-export const KUNCI_HASIL = "siagaku:hasil:v2";
-export const KUNCI_TAS = "siagaku:tas";
+export function kunciPenyimpananRencana(contoh: boolean) {
+  return contoh
+    ? { hasil: "siagaku:hasil:contoh:v2", tas: "siagaku:tas:contoh" }
+    : { hasil: "siagaku:hasil:v2", tas: "siagaku:tas" };
+}
 
 export function kunciInput(i: InputRencanaT): string {
   return JSON.stringify(i);

@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { buttonClass } from "@/components/ButtonLink";
 import { GrupPilihan, KotakCentang, Stepper, type Opsi } from "@/components/form/Pilihan";
@@ -76,7 +75,6 @@ function bacaDraf(): Draf {
 }
 
 export default function Wizard() {
-  const router = useRouter();
   const [draf, setDraf] = useState<Draf>(bacaDraf);
   const [langkah, setLangkah] = useState<1 | 2>(1);
   const [pusatKey, setPusatKey] = useState(0);
@@ -84,7 +82,6 @@ export default function Wizard() {
   const [stPantai, setStPantai] = useState<Status>("memuat");
   const [gps, setGps] = useState<string | null>(null);
   const [galat, setGalat] = useState<Record<string, string>>({});
-  const [mengirim, setMengirim] = useState(false);
   const judulRef = useRef<HTMLHeadingElement>(null);
 
   const ubah = (patch: Partial<Draf>) => {
@@ -197,13 +194,15 @@ export default function Wizard() {
       setGalat({ umum: "Ada isian yang belum sesuai. Periksa lagi isian di atas." });
       return;
     }
-    setMengirim(true);
     try {
       localStorage.setItem(KUNCI_INPUT, JSON.stringify(hasil.data));
     } catch {
-      /* lanjut tanpa penyimpanan */
+      setGalat({ umum: "Izin penyimpanan browser diperlukan. Izinkan penyimpanan untuk situs ini, lalu coba lagi." });
+      return;
     }
-    router.push("/hasil");
+    // Mulai halaman hasil dari input yang baru, tanpa mempertahankan rencana lama di navigasi klien.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign("/hasil");
   }
 
   const ketPantai =
@@ -405,13 +404,13 @@ export default function Wizard() {
               />
             </fieldset>
 
-            {galat.umum && <p className="mb-3 font-medium text-risk">{galat.umum}</p>}
+            {galat.umum && <p role="alert" className="mb-3 font-medium text-risk">{galat.umum}</p>}
             <div className="mt-2 flex flex-wrap justify-between gap-3">
               <button type="button" onClick={() => setLangkah(1)} className={buttonClass("plain", "flex-1 sm:flex-none")}>
                 Ubah lokasi
               </button>
-              <button type="submit" disabled={mengirim} className={buttonClass("go", "flex-1 disabled:opacity-60 sm:flex-none")}>
-                {mengirim ? "Menyusun rencana…" : "Hitung risiko dan susun rencana"}
+              <button type="submit" className={buttonClass("go", "flex-1 sm:flex-none")}>
+                Hitung risiko dan susun rencana
               </button>
             </div>
           </form>

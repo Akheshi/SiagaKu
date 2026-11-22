@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { buttonClass } from "@/components/ButtonLink";
-import { fmt, KUNCI_HASIL, KUNCI_TAS, kunciInput, pesisir, type HasilRencana } from "@/lib/hasil";
-import { CONTOH_BENGKULU } from "@/lib/input";
+import { fmt, kunciInput, kunciPenyimpananRencana, pesisir, type HasilRencana } from "@/lib/hasil";
+import { CONTOH_BENGKULU, InputRencana, KUNCI_INPUT } from "@/lib/input";
 
 function baca<T>(k: string): T | null {
   try {
@@ -26,17 +27,25 @@ function nomorDokumen(d: HasilRencana) {
 
 type Keadaan = { tahap: "memuat" } | { tahap: "kosong" } | { tahap: "siap"; data: HasilRencana };
 
-function awal(): Keadaan {
-  const simpan = baca<{ kunci: string; data: HasilRencana }>(KUNCI_HASIL);
-  const contoh = new URLSearchParams(window.location.search).get("contoh") === "bengkulu";
+function awal(contoh: boolean, kunciHasil: string): Keadaan {
+  const simpan = baca<{ kunci: string; data: HasilRencana }>(kunciHasil);
   if (contoh) {
     return simpan?.kunci === kunciInput(CONTOH_BENGKULU) ? { tahap: "siap", data: simpan.data } : { tahap: "memuat" };
   }
-  return simpan ? { tahap: "siap", data: simpan.data } : { tahap: "kosong" };
+  const input = InputRencana.safeParse(baca(KUNCI_INPUT));
+  return input.success && simpan?.kunci === kunciInput(input.data)
+    ? { tahap: "siap", data: simpan.data }
+    : { tahap: "kosong" };
 }
 
 export default function Lembar() {
-  const [k, setK] = useState<Keadaan>(awal);
+  const contoh = useSearchParams().get("contoh") === "bengkulu";
+  return <IsiLembar key={String(contoh)} contoh={contoh} />;
+}
+
+function IsiLembar({ contoh }: { contoh: boolean }) {
+  const { hasil: kunciHasil, tas: kunciTas } = kunciPenyimpananRencana(contoh);
+  const [k, setK] = useState<Keadaan>(() => awal(contoh, kunciHasil));
 
   useEffect(() => {
     if (k.tahap !== "memuat") return;
@@ -46,14 +55,14 @@ export default function Lembar() {
       .then((data: HasilRencana) => {
         if (!data.ok) throw new Error();
         try {
-          localStorage.setItem(KUNCI_HASIL, JSON.stringify({ kunci: kunciInput(CONTOH_BENGKULU), data }));
+          localStorage.setItem(kunciHasil, JSON.stringify({ kunci: kunciInput(CONTOH_BENGKULU), data }));
         } catch {
           /* abaikan */
         }
         setK({ tahap: "siap", data });
       })
       .catch(() => setK({ tahap: "kosong" }));
-  }, [k.tahap]);
+  }, [k.tahap, kunciHasil]);
 
   if (k.tahap === "memuat") {
     return <p className="mx-auto max-w-[820px] px-4 pt-12 text-ink-3">Menyiapkan lembar contoh…</p>;
@@ -64,8 +73,8 @@ export default function Lembar() {
         <h1 className="text-[clamp(34px,4.6vw,52px)]">Belum ada lembar rencana</h1>
         <p className="mt-3 max-w-[60ch] text-ink-2">Buat rencana keluargamu dulu, lalu cetak dari halaman hasil.</p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/cek" className={buttonClass("go")}>
-            Cek risiko rumahku
+          <Link href="/hasil" className={buttonClass("go")}>
+            Buka rencana keluarga
           </Link>
           <a href="/hasil/cetak?contoh=bengkulu" className={buttonClass("plain")}>
             Lihat contoh lembar
@@ -77,13 +86,11 @@ export default function Lembar() {
 
   const d = k.data;
   const { input, skor, rencana } = d;
-  const centang = baca<Record<string, boolean>>(KUNCI_TAS) ?? {};
+  const centang = baca<Record<string, boolean>>(kunciTas) ?? {};
   const tas = [
     ...d.tasDasar,
     ...rencana.tas_siaga_tambahan.map((t, i) => ({ id: `t${i}-${t.barang}`, barang: t.barang })),
   ];
-  // input dari server sudah berisi ketinggian, jadi cocokkan nama & lokasi saja
-  const contoh = input.namaKeluarga === CONTOH_BENGKULU.namaKeluarga && input.lokasi.lat === CONTOH_BENGKULU.lokasi.lat;
   const judul = contoh ? "Contoh — Kota Bengkulu" : input.namaKeluarga ? `Keluarga ${input.namaKeluarga}` : "Keluarga kami";
 
   return (
