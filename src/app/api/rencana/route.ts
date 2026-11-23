@@ -36,15 +36,11 @@ export async function POST(request: Request) {
     }
   }
 
-  let gempaDekat = 0;
-  let gempaTersedia = true;
-  try {
-    const g = await ambilGempa();
-    gempaDekat = hitungGempaDekat(g.terkini, input.lokasi, 300);
-  } catch {
-    gempaTersedia = false;
-  }
-
+  // Feed gempa terbaru dan daftar untuk skor bisa gagal secara terpisah.
+  const dataGempa = await ambilGempa().catch(() => null);
+  const gempaDekat = dataGempa?.terkini.length
+    ? hitungGempaDekat(dataGempa.terkini, input.lokasi, 300)
+    : null;
   const skor = hitungSkor(keInputSkor(input, gempaDekat));
   const lambat = input.kerentanan.lansia || input.kerentanan.disabilitas;
   const template = rencanaTemplate({ input, skor });
@@ -60,7 +56,7 @@ export async function POST(request: Request) {
     input,
     skor,
     gempaDekat,
-    gempaTersedia,
+    gempaTersedia: skor.lengkap,
     titik,
     sumberTitik,
     rencana,

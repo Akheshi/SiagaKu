@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { buttonClass } from "@/components/ButtonLink";
-import { fmt, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
+import { fmt, KETERANGAN_SKOR_SEMENTARA, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
 import { CONTOH_BENGKULU, KUNCI_INPUT, InputRencana, type InputRencanaT } from "@/lib/input";
 
 const ResultMap = dynamic(() => import("@/components/map/ResultMap"), {
@@ -15,9 +15,9 @@ const ResultMap = dynamic(() => import("@/components/map/ResultMap"), {
 
 type Keadaan =
   | { tahap: "kosong" }
-  | { tahap: "memuat"; input: InputRencanaT }
+  | { tahap: "memuat"; input: InputRencanaT; sebelumnya?: HasilRencana }
   | { tahap: "galat"; input: InputRencanaT; pesan: string }
-  | { tahap: "siap"; data: HasilRencana };
+  | { tahap: "siap"; input: InputRencanaT; data: HasilRencana; galatPembaruan?: string };
 
 function simpan(kunci: string, nilai: unknown) {
   try {
@@ -45,7 +45,7 @@ function keadaanAwal(contoh: boolean, kunciHasil: string): Keadaan {
   const input = inputAwal(contoh);
   if (!input) return { tahap: "kosong" };
   const tersimpan = baca<{ kunci: string; data: HasilRencana }>(kunciHasil);
-  if (tersimpan?.kunci === kunciInput(input)) return { tahap: "siap", data: tersimpan.data };
+  if (tersimpan?.kunci === kunciInput(input)) return { tahap: "siap", input, data: tersimpan.data };
   return { tahap: "memuat", input };
 }
 
@@ -61,7 +61,7 @@ function IsiHasil({ contoh }: { contoh: boolean }) {
   const [k, setK] = useState<Keadaan>(() => keadaanAwal(contoh, kunciHasil));
   const [pesanKe, setPesanKe] = useState(0);
 
-  const muat = useCallback(async (input: InputRencanaT) => {
+  const muat = useCallback(async (input: InputRencanaT, sebelumnya?: HasilRencana) => {
     try {
       const res = await fetch("/api/rencana", {
         method: "POST",
@@ -73,10 +73,12 @@ function IsiHasil({ contoh }: { contoh: boolean }) {
         throw new Error(typeof data?.pesan === "string" ? data.pesan : "Layanan sedang bermasalah. Coba lagi sebentar.");
       }
       simpan(kunciHasil, { kunci: kunciInput(input), data });
-      setK({ tahap: "siap", data });
+      setK({ tahap: "siap", input, data });
     } catch (e) {
       const pesan = e instanceof TypeError ? "Koneksi internet terputus. Periksa jaringan, lalu coba lagi." : (e as Error).message;
-      setK({ tahap: "galat", input, pesan });
+      setK(sebelumnya
+        ? { tahap: "siap", input, data: sebelumnya, galatPembaruan: pesan }
+        : { tahap: "galat", input, pesan });
     }
   }, [kunciHasil]);
 
@@ -85,7 +87,7 @@ function IsiHasil({ contoh }: { contoh: boolean }) {
     const t = setInterval(() => setPesanKe((n) => Math.min(n + 1, PESAN_MUAT.length - 1)), 2500);
     // muat() hanya memanggil setState setelah await (respons jaringan), bukan sinkron
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    muat(k.input);
+    muat(k.input, k.sebelumnya);
     return () => clearInterval(t);
     // hanya saat masuk tahap memuat
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -143,23 +145,42 @@ function IsiHasil({ contoh }: { contoh: boolean }) {
     );
   }
 
-  return <TampilanHasil data={k.data} contoh={contoh} kunciTas={kunciTas} />;
+  return (
+    <TampilanHasil
+      data={k.data}
+      contoh={contoh}
+      kunciTas={kunciTas}
+      galatPembaruan={k.galatPembaruan}
+      onPerbarui={() => {
+        setPesanKe(0);
+        setK({ tahap: "memuat", input: k.input, sebelumnya: k.data });
+      }}
+    />
+  );
 }
 
 function teksBagikan(d: HasilRencana) {
   return [
     `Rencana siaga ${d.input.namaKeluarga ? `Keluarga ${d.input.namaKeluarga}` : "keluarga kita"} (SiagaKu)`,
-    `Skor risiko rumah: ${d.skor.total}/100 (${d.skor.kategori})`,
+    d.skor.lengkap
+      ? `Skor risiko rumah: ${d.skor.total}/100 (${d.skor.kategori})`
+      : `Skor sementara: ${d.skor.total}/100. ${KETERANGAN_SKOR_SEMENTARA}`,
     ...d.rencana.langkah_darurat.map((l, i) => `${i + 1}. ${l}`),
-    ...((d.rencana.fokus ?? []).length ? ["", "Kerjakan lebih dulu:", ...d.rencana.fokus.map((f) => `- ${f.tindakan}`)] : []),
+    ...((d.rencana.fokus).length ? ["", "Kerjakan lebih dulu:", ...d.rencana.fokus.map((f) => `- ${f.tindakan}`)] : []),
     `Buat rencanamu sendiri: ${window.location.origin}/cek`,
   ]
     .join("\n");
 }
 
-function TampilanHasil({ data: d, contoh, kunciTas }: { data: HasilRencana; contoh: boolean; kunciTas: string }) {
+function TampilanHasil({ data: d, contoh, kunciTas, galatPembaruan, onPerbarui }: {
+  data: HasilRencana;
+  contoh: boolean;
+  kunciTas: string;
+  galatPembaruan?: string;
+  onPerbarui: () => void;
+}) {
   const { input, skor, titik, rencana } = d;
-  const warna = warnaKategori(skor.kategori);
+  const warna = skor.lengkap ? warnaKategori(skor.kategori) : { teks: "text-ink", bingkai: "border-ink" };
   const judul = contoh
     ? "Contoh rencana: Kota Bengkulu"
     : `Rencana siaga ${input.namaKeluarga ? `Keluarga ${input.namaKeluarga}` : "keluargamu"}`;
@@ -167,33 +188,77 @@ function TampilanHasil({ data: d, contoh, kunciTas }: { data: HasilRencana; cont
 
   return (
     <div className="mx-auto max-w-[1200px] px-4">
-      <div className="flex flex-wrap items-end justify-between gap-4 pt-7 pb-4">
-        <div>
-          <h1 className="text-[clamp(34px,4.6vw,52px)]">{judul}</h1>
-          <p className="mt-1.5 text-ink-2">
-            {fmt(input.lokasi.lat, 4)}, {fmt(input.lokasi.lon, 4)} ·{" "}
-            {input.elevasiM === null ? "ketinggian tidak terbaca" : `${fmt(input.elevasiM, 0)} m dpl`} · {input.penghuni} orang
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href={contoh ? "/hasil/cetak?contoh=bengkulu" : "/hasil/cetak"} className={buttonClass("go", "min-h-11 px-4 text-[15px]")}>
-            Cetak lembar rencana
-          </Link>
-          <a
-            className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}
-            href={`https://wa.me/?text=${encodeURIComponent(teksBagikan(d))}`}
-            target="_blank"
-            rel="noopener"
-          >
-            Bagikan ke WhatsApp
-          </a>
-          <Link href="/cek" className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}>
-            Ubah data
-          </Link>
-        </div>
+      <div className="pt-7 pb-4">
+        <h1 className="text-[clamp(34px,4.6vw,52px)]">{judul}</h1>
+        <p className="mt-1.5 text-ink-2">
+          {fmt(input.lokasi.lat, 4)}, {fmt(input.lokasi.lon, 4)} ·{" "}
+          {input.elevasiM === null ? "ketinggian tidak terbaca" : `${fmt(input.elevasiM, 0)} m dpl`} · {input.penghuni} orang
+        </p>
       </div>
-
       <PapanRambu d={d} />
+
+      <div className="mt-4 grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.55fr)]">
+        <section className="border-2 border-ink bg-white px-4 py-3" aria-labelledby="judul-skor">
+          <h2 id="judul-skor" className="text-xl">{skor.lengkap ? "Skor risiko" : "Skor sementara"}</h2>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className={`font-mono text-[42px] leading-none font-semibold tracking-tight ${warna.teks}`}>
+              {skor.total}<small className="text-lg text-ink-3">/100</small>
+            </p>
+            {skor.lengkap && (
+              <p className={`border-2 px-2 py-0.5 font-sign text-xl font-bold ${warna.bingkai} ${warna.teks}`}>
+                Risiko {skor.kategori.toLowerCase()}
+              </p>
+            )}
+          </div>
+          <p className="mt-2 text-sm text-ink-2">
+            Faktor terbesar: {faktorBesar.faktor.toLowerCase()} ({faktorBesar.nilai}).
+          </p>
+          {skor.lengkap ? (
+            <div className="relative mt-3 mb-1" aria-hidden="true">
+              <div className="grid grid-cols-[40fr_20fr_20fr_21fr] font-mono text-xs text-ink-3">
+                <div className="border-t-[5px] border-cat-rendah pt-1">0</div>
+                <div className="border-t-[5px] border-cat-sedang pt-1">40</div>
+                <div className="border-t-[5px] border-cat-tinggi pt-1">60</div>
+                <div className="border-t-[5px] border-cat-sangat pt-1">80</div>
+              </div>
+              <span className="absolute -top-1 h-[13px] w-[3px] bg-ink" style={{ left: `${Math.min(99, skor.total)}%` }} />
+            </div>
+          ) : (
+            <>
+              <p className="mt-2 text-sm font-semibold">{KETERANGAN_SKOR_SEMENTARA}</p>
+              {galatPembaruan && <p role="alert" className="mt-2 text-sm text-risk">{galatPembaruan}</p>}
+              <button type="button" className={buttonClass("plain", "mt-3 px-3 text-sm")} onClick={onPerbarui}>
+                Perbarui data gempa
+              </button>
+            </>
+          )}
+        </section>
+        {rencana.fokus.length > 0 && (
+          <section className="border-2 border-ink bg-white" aria-labelledby="judul-fokus">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 bg-ink px-4 py-2 text-white">
+              <h2 id="judul-fokus" className="font-sign text-xl font-bold">
+                Kerjakan lebih dulu
+              </h2>
+              <span className="font-mono text-xs opacity-80">
+                {d.sumberRencana === "ai" ? "urutan dipilih DeepSeek dari daftar SiagaKu" : "urutan bawaan dari skor"}
+              </span>
+            </div>
+            <ol>
+              {rencana.fokus.map((f, i) => (
+                <li key={f.faktor} className="grid grid-cols-[28px_1fr] gap-2.5 border-t border-line px-4 py-2.5 first:border-t-0">
+                  <span className="grid size-7 place-items-center bg-sign font-mono font-semibold text-white">{i + 1}</span>
+                  <div>
+                    <p className="font-semibold">
+                      {f.faktor} <span className="font-normal text-ink-3">· {f.nilai}</span>
+                    </p>
+                    <p className="text-[15.5px] text-ink-2">{f.tindakan}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+      </div>
 
       <div className="mt-5 grid border-2 border-ink bg-white md:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="relative z-0 min-h-[380px] border-b-2 border-ink md:min-h-[540px] md:border-r-2 md:border-b-0">
@@ -213,34 +278,6 @@ function TampilanHasil({ data: d, contoh, kunciTas }: { data: HasilRencana; cont
         </div>
 
         <div>
-          <section className="px-5 pt-5 pb-2" aria-labelledby="judul-skor">
-            <h2 id="judul-skor" className="sr-only">
-              Skor risiko
-            </h2>
-            <div className="flex flex-wrap items-end gap-4">
-              <p className={`font-mono text-[72px] leading-[0.8] font-semibold tracking-tighter sm:text-[88px] ${warna.teks}`}>
-                {skor.total}
-                <small className="text-[22px] tracking-normal text-ink-3">/100</small>
-              </p>
-              <p className={`mb-1 border-[3px] px-3 pt-2 pb-1.5 font-sign text-[26px] leading-none font-bold tracking-wide uppercase ${warna.bingkai} ${warna.teks}`}>
-                Risiko {skor.kategori.toLowerCase()}
-              </p>
-            </div>
-            <div className="relative mt-5" aria-hidden="true">
-              <div className="grid grid-cols-[40fr_20fr_20fr_21fr] font-mono text-[11.5px] leading-none text-ink-3">
-                <div className="border-t-[6px] border-cat-rendah pt-1.5">0 Rendah</div>
-                <div className="border-t-[6px] border-cat-sedang pt-1.5">40 Sedang</div>
-                <div className="border-t-[6px] border-cat-tinggi pt-1.5">60 Tinggi</div>
-                <div className="border-t-[6px] border-cat-sangat pt-1.5">80</div>
-              </div>
-              <span className="absolute -top-1.5 h-[18px] w-[3px] bg-ink" style={{ left: `${Math.min(99, skor.total)}%` }} />
-            </div>
-            <p className="mt-4 text-[15px] text-ink-2">
-              Faktor terbesar: {faktorBesar.faktor.toLowerCase()} ({faktorBesar.nilai}).
-              {d.gempaTersedia ? "" : " Data gempa BMKG sedang tidak tersedia, faktor aktivitas gempa dihitung 0."}
-            </p>
-          </section>
-
           <table className="mt-3 w-full border-collapse text-[14.5px]">
             <caption className="px-5 pt-3.5 pb-2 text-left font-sign text-xl font-bold">Dari mana angka {skor.total}</caption>
             <tbody>
@@ -251,7 +288,9 @@ function TampilanHasil({ data: d, contoh, kunciTas }: { data: HasilRencana; cont
                   </th>
                   <td className="py-2.5 pr-2 text-[13.5px] text-ink-3">{r.nilai}</td>
                   <td className="py-2.5 pr-5 text-right font-mono text-[15px] font-semibold whitespace-nowrap">
-                    {r.poin} <small className="font-normal text-ink-3">/{r.maks}</small>
+                    {!skor.lengkap && r.faktor === "Aktivitas gempa"
+                      ? <span aria-label="Belum dihitung">—</span>
+                      : <>{r.poin} <small className="font-normal text-ink-3">/{r.maks}</small></>}
                   </td>
                 </tr>
               ))}
@@ -259,7 +298,7 @@ function TampilanHasil({ data: d, contoh, kunciTas }: { data: HasilRencana; cont
             <tfoot>
               <tr className="border-t-2 border-ink">
                 <th scope="row" className="px-5 py-2.5 text-left font-semibold">
-                  Total
+                  {skor.lengkap ? "Total" : "Total sementara"}
                 </th>
                 <td />
                 <td className="py-2.5 pr-5 text-right font-mono text-[15px] font-semibold">
@@ -309,45 +348,31 @@ function TampilanHasil({ data: d, contoh, kunciTas }: { data: HasilRencana; cont
         </div>
       </div>
 
-      <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-12">
+      <div className="mt-5 flex flex-wrap gap-2">
+        {/* Buka ulang dokumen agar lembar membaca hasil terakhir dari penyimpanan. */}
+        <a href={contoh ? "/hasil/cetak?contoh=bengkulu" : "/hasil/cetak"} className={buttonClass("go", "min-h-11 px-4 text-[15px]")}>
+          Cetak lembar rencana
+        </a>
+        <a
+          className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}
+          href={`https://wa.me/?text=${encodeURIComponent(teksBagikan(d))}`}
+          target="_blank"
+          rel="noopener"
+        >
+          Bagikan ke WhatsApp
+        </a>
+        <Link href="/cek" className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}>
+          Ubah data
+        </Link>
+      </div>
+
+      <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-12">
         <section aria-labelledby="judul-rencana">
-          <div className="mb-4 flex items-baseline justify-between gap-3 border-b-[3px] border-ink pb-2.5">
-            <h2 id="judul-rencana" className="text-4xl">
-              Rencana keluarga
-            </h2>
-            <span className="text-right text-[13px] text-ink-3">
-              {d.sumberRencana === "ai" ? "Fokus persiapan dipilih AI" : "Fokus persiapan bawaan"}
-            </span>
-          </div>
-          <p className="max-w-[62ch] text-lg leading-relaxed">{rencana.ringkasan}</p>
+          <h2 id="judul-rencana" className="border-b-[3px] border-ink pb-2.5 text-4xl">
+            Rencana keluarga
+          </h2>
 
-          {(rencana.fokus ?? []).length > 0 && (
-            <div className="mt-6 border-2 border-ink" aria-labelledby="judul-fokus">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 bg-ink px-4 py-2 text-white">
-                <h3 id="judul-fokus" className="font-sign text-xl font-bold tracking-wide uppercase">
-                  Kerjakan lebih dulu
-                </h3>
-                <span className="font-mono text-xs opacity-80">
-                  {d.sumberRencana === "ai" ? "urutan dipilih DeepSeek dari daftar SiagaKu" : "urutan bawaan dari skor"}
-                </span>
-              </div>
-              <ol>
-                {rencana.fokus.map((f, i) => (
-                  <li key={f.faktor} className="grid grid-cols-[40px_1fr] gap-3 border-t border-line px-4 py-3 first:border-t-0">
-                    <span className="grid size-8 place-items-center bg-risk font-mono font-semibold text-white">{i + 1}</span>
-                    <div>
-                      <p className="font-semibold">
-                        {f.faktor} <span className="font-normal text-ink-3">· {f.nilai}</span>
-                      </p>
-                      <p className="text-[15.5px] text-ink-2">{f.tindakan}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-
-          <ol className="mt-6">
+          <ol className="mt-2">
             {rencana.langkah_darurat.map((l, i) => (
               <li key={i} className="grid grid-cols-[52px_1fr] gap-3.5 border-t border-line py-3.5">
                 <span className="grid size-11 place-items-center border-2 border-ink font-mono text-xl font-semibold">{i + 1}</span>

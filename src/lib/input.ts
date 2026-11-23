@@ -34,7 +34,7 @@ export const InputRencana = z.object({
 
 export type InputRencanaT = z.infer<typeof InputRencana>;
 
-export function keInputSkor(i: InputRencanaT, jumlahGempaDekat: number): InputSkor {
+export function keInputSkor(i: InputRencanaT, jumlahGempaDekat: number | null): InputSkor {
   return {
     elevasiM: i.elevasiM,
     jarakPantai: i.jarakPantai,

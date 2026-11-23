@@ -14,8 +14,8 @@ export type InputSkor = {
   /** m dpl dari Open-Meteo; null jika gagal diambil */
   elevasiM: number | null;
   jarakPantai: RentangPantai;
-  /** jumlah gempa M5+ (dari 15 terakhir BMKG) dalam radius 300 km */
-  jumlahGempaDekat: number;
+  /** Jumlah gempa M5+ (dari 15 terakhir BMKG) dalam radius 300 km. Null jika daftar tidak tersedia. */
+  jumlahGempaDekat: number | null;
   bangunan: JenisBangunan;
   lantai: number;
   kerentanan: Kerentanan;
@@ -32,7 +32,7 @@ export type RincianFaktor = {
   alasan: string;
 };
 
-export type HasilSkor = { total: number; kategori: Kategori; rincian: RincianFaktor[] };
+export type HasilSkor = { total: number; kategori: Kategori; lengkap: boolean; rincian: RincianFaktor[] };
 
 export const LABEL_PANTAI: Record<RentangPantai, string> = {
   lt0_5: "kurang dari 500 m",
@@ -143,10 +143,12 @@ export function hitungSkor(input: InputSkor): HasilSkor {
     },
     {
       faktor: "Aktivitas gempa",
-      nilai: `${jumlahGempaDekat} gempa M5+ ≤ 300 km`,
-      poin: poinGempa(jumlahGempaDekat),
+      nilai: jumlahGempaDekat === null ? "Data BMKG belum tersedia" : `${jumlahGempaDekat} gempa M5+ ≤ 300 km`,
+      poin: poinGempa(jumlahGempaDekat ?? 0),
       maks: 15,
-      alasan: "Dihitung dari 15 gempa M5+ terakhir yang dicatat BMKG.",
+      alasan: jumlahGempaDekat === null
+        ? "Faktor ini belum masuk dalam skor sementara."
+        : "Dihitung dari 15 gempa M5+ terakhir yang dicatat BMKG.",
     },
     {
       faktor: "Bangunan",
@@ -185,5 +187,5 @@ export function hitungSkor(input: InputSkor): HasilSkor {
   ];
 
   const total = Math.min(100, rincian.reduce((s, r) => s + r.poin, 0));
-  return { total, kategori: kategoriSkor(total), rincian };
+  return { total, kategori: kategoriSkor(total), lengkap: jumlahGempaDekat !== null, rincian };
 }

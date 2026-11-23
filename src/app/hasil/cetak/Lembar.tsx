@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { buttonClass } from "@/components/ButtonLink";
-import { fmt, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
-import { CONTOH_BENGKULU, InputRencana, KUNCI_INPUT } from "@/lib/input";
+import { fmt, KETERANGAN_SKOR_SEMENTARA, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
+import { CONTOH_BENGKULU, InputRencana, KUNCI_INPUT, type InputRencanaT } from "@/lib/input";
 
 function baca<T>(k: string): T | null {
   try {
@@ -25,17 +25,20 @@ function nomorDokumen(d: HasilRencana) {
   return `SK-${yymm}-${String(h % 10000).padStart(4, "0")}`;
 }
 
-type Keadaan = { tahap: "memuat" } | { tahap: "kosong" } | { tahap: "siap"; data: HasilRencana };
+type Keadaan =
+  | { tahap: "memuat"; input: InputRencanaT }
+  | { tahap: "kosong" }
+  | { tahap: "galat"; input: InputRencanaT }
+  | { tahap: "siap"; data: HasilRencana };
 
 function awal(contoh: boolean, kunciHasil: string): Keadaan {
+  const cek = InputRencana.safeParse(contoh ? CONTOH_BENGKULU : baca(KUNCI_INPUT));
+  if (!cek.success) return { tahap: "kosong" };
+
   const simpan = baca<{ kunci: string; data: HasilRencana }>(kunciHasil);
-  if (contoh) {
-    return simpan?.kunci === kunciInput(CONTOH_BENGKULU) ? { tahap: "siap", data: simpan.data } : { tahap: "memuat" };
-  }
-  const input = InputRencana.safeParse(baca(KUNCI_INPUT));
-  return input.success && simpan?.kunci === kunciInput(input.data)
+  return simpan?.kunci === kunciInput(cek.data)
     ? { tahap: "siap", data: simpan.data }
-    : { tahap: "kosong" };
+    : { tahap: "memuat", input: cek.data };
 }
 
 export default function Lembar() {
@@ -49,23 +52,41 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
 
   useEffect(() => {
     if (k.tahap !== "memuat") return;
-    // hanya untuk tautan contoh yang belum pernah dibuka: susun dulu lewat API
-    fetch("/api/rencana", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CONTOH_BENGKULU) })
+    const { input } = k;
+    const ctrl = new AbortController();
+    fetch("/api/rencana", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+      signal: ctrl.signal,
+    })
       .then((r) => r.json())
       .then((data: HasilRencana) => {
+        if (ctrl.signal.aborted) return;
         if (!data.ok) throw new Error();
         try {
-          localStorage.setItem(kunciHasil, JSON.stringify({ kunci: kunciInput(CONTOH_BENGKULU), data }));
+          localStorage.setItem(kunciHasil, JSON.stringify({ kunci: kunciInput(input), data }));
         } catch {
           /* abaikan */
         }
         setK({ tahap: "siap", data });
       })
-      .catch(() => setK({ tahap: "kosong" }));
-  }, [k.tahap, kunciHasil]);
+      .catch(() => { if (!ctrl.signal.aborted) setK({ tahap: "galat", input }); });
+    return () => ctrl.abort();
+  }, [k, kunciHasil]);
 
   if (k.tahap === "memuat") {
-    return <p className="mx-auto max-w-[820px] px-4 pt-12 text-ink-3">Menyiapkan lembar contoh…</p>;
+    return <p role="status" className="mx-auto max-w-[820px] px-4 pt-12 text-ink-3">Menyiapkan lembar rencana…</p>;
+  }
+  if (k.tahap === "galat") {
+    return (
+      <div className="mx-auto max-w-[820px] px-4 pt-12">
+        <h1 className="text-4xl">Lembar rencana belum bisa disiapkan</h1>
+        <button type="button" className={buttonClass("go", "mt-4")} onClick={() => setK({ tahap: "memuat", input: k.input })}>
+          Coba lagi
+        </button>
+      </div>
+    );
   }
   if (k.tahap === "kosong") {
     return (
@@ -91,7 +112,7 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
     ...d.tasDasar,
     ...rencana.tas_siaga_tambahan.map((t, i) => ({ id: `t${i}-${t.barang}`, barang: t.barang })),
   ];
-  const warna = warnaKategori(skor.kategori);
+  const warna = skor.lengkap ? warnaKategori(skor.kategori) : { teks: "text-ink", bingkai: "border-ink" };
   const tanggal = new Date(d.dibuat).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   const kandidat = d.titik.slice(0, 3);
   const judul = contoh ? "Contoh — Kota Bengkulu" : input.namaKeluarga ? `Keluarga ${input.namaKeluarga}` : "Keluarga kami";
@@ -99,9 +120,9 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
   return (
     <div className="px-4 py-8 print:p-0">
       <div className="mx-auto mb-4 flex max-w-[820px] flex-wrap gap-2 print:hidden">
-        <Link href={contoh ? "/hasil?contoh=bengkulu" : "/hasil"} className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}>
+        <a href={contoh ? "/hasil?contoh=bengkulu" : "/hasil"} className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}>
           Kembali ke hasil
-        </Link>
+        </a>
         <button type="button" onClick={() => window.print()} className={buttonClass("go", "min-h-11 px-4 text-[15px]")}>
           Cetak / simpan PDF
         </button>
@@ -122,16 +143,15 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
           </div>
           <div
             className={`mr-2 grid size-24 -rotate-6 place-items-center border-[3px] border-double p-2 text-center font-mono text-[11px] leading-tight font-semibold sm:size-[132px] print:size-[104px] ${warna.teks} ${warna.bingkai}`}
-            aria-label={`Skor risiko ${skor.total}, ${skor.kategori}`}
+            aria-label={skor.lengkap ? `Skor risiko ${skor.total}, ${skor.kategori}` : `Skor sementara ${skor.total}`}
           >
             <div>
               <b className="block text-[32px] leading-none sm:text-[44px]">{skor.total}</b>
-              RISIKO
-              <br />
-              {skor.kategori.toUpperCase()}
+              {skor.lengkap ? <>RISIKO<br />{skor.kategori.toUpperCase()}</> : <>SKOR<br />SEMENTARA</>}
             </div>
           </div>
         </header>
+        {!skor.lengkap && <p className="mt-2 text-sm font-semibold print:mt-1 print:text-[11px]">{KETERANGAN_SKOR_SEMENTARA}</p>}
 
         <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">
           {pesisir(input) ? "Saat gempa — rumah dekat pantai" : "Saat dan setelah gempa"}

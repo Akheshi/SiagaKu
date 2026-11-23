@@ -88,7 +88,9 @@ export function rencanaTemplate({ input, skor }: Konteks): Rencana {
   const lambat = input.kerentanan.lansia || input.kerentanan.disabilitas || input.kerentanan.balita;
 
   const ringkasan = [
-    `Skor risiko rumahmu ${skor.total} dari 100, kategori ${skor.kategori.toLowerCase()}.`,
+    skor.lengkap
+      ? `Skor risiko rumahmu ${skor.total} dari 100, kategori ${skor.kategori.toLowerCase()}.`
+      : `Skor sementara ${skor.total} dari 100. Data aktivitas gempa BMKG belum tersedia.`,
     pesisir(input)
       ? "Jika gempa terasa kuat atau lama di pesisir, segera evakuasi setelah guncangan mereda."
       : "Rumahmu jauh dari pantai, jadi fokus utamanya adalah selamat dari guncangan dan reruntuhan.",
