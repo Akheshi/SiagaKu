@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { buttonClass } from "@/components/ButtonLink";
 import TautanRencanaLama from "@/components/TautanRencanaLama";
 import { SAAT_GUNCANGAN, setelahGuncangan } from "@/lib/arahan";
-import { fmt, KETERANGAN_SKOR_SEMENTARA, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
+import { BATAS_MENIT_JALAN, fmt, KETERANGAN_SKOR_SEMENTARA, PERINGATAN_KANDIDAT_JAUH, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
 import { inputMode, modeDariUrl, qsMode, teksBagikan, type ModeAktif } from "@/lib/bagikan";
 import { KUNCI_INPUT, type InputRencanaT } from "@/lib/input";
 import { CATATAN_CADANGAN } from "@/lib/rencana";
@@ -169,6 +169,10 @@ function TampilanHasil({ data: d, mode, kunciTas, galatPembaruan, onPerbarui }: 
   const judul = mode.jenis === "contoh"
     ? "Contoh rencana: Kota Bengkulu"
     : `Rencana siaga ${input.namaKeluarga ? `Keluarga ${input.namaKeluarga}` : "keluargamu"}`;
+  const bawaan = d.fokusBawaan ?? [];
+  const pilihanAI = rencana.fokus.map((f) => f.faktor);
+  const bedaDariSkor = d.sumberRencana === "ai" && bawaan.length > 0 && bawaan.join("|") !== pilihanAI.join("|");
+  const adaKandidatJauh = pesisir(input) && titik.some((t) => t.menit > BATAS_MENIT_JALAN);
   const faktorBesar = [...skor.rincian].sort((a, b) => b.poin - a.poin)[0];
   const waktu = new Date(d.dibuat).toLocaleString("id-ID", {
     dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta",
@@ -246,6 +250,11 @@ function TampilanHasil({ data: d, mode, kunciTas, galatPembaruan, onPerbarui }: 
                 </li>
               ))}
             </ol>
+            {bedaDariSkor && (
+              <p className="border-t border-line px-4 py-2 text-[13px] text-ink-3">
+                Urutan dari skor saja: {bawaan.join(", ")}. DeepSeek menimbang kondisi keluarga, lalu memilih urutan di atas dari daftar yang sama.
+              </p>
+            )}
           </section>
         )}
       </div>
@@ -334,7 +343,7 @@ function TampilanHasil({ data: d, mode, kunciTas, galatPembaruan, onPerbarui }: 
             {titik.length === 0 ? (
               <p className="px-5 py-4 text-[15px] text-ink-2">
                 {d.sumberTitik === "tidak-tersedia"
-                  ? "Data peta tempat umum sedang tidak bisa diambil. Perbarui hasil untuk mencoba lagi."
+                  ? "Kandidat otomatis saat ini tersedia untuk Provinsi Bengkulu. Di wilayah lain, layanan peta OpenStreetMap sering tidak merespons. Tanyakan lokasi evakuasi resmi ke BPBD atau kelurahan."
                   : "Belum ditemukan kandidat yang memenuhi kriteria di sekitar lokasi ini."}
               </p>
             ) : (
@@ -346,6 +355,9 @@ function TampilanHasil({ data: d, mode, kunciTas, galatPembaruan, onPerbarui }: 
                     <p className="text-[13px] text-ink-3">
                       {t.jenis} · {fmt(t.elevasiM, 0)} m dpl · {t.arah.nama}
                     </p>
+                    {pesisir(input) && t.menit > BATAS_MENIT_JALAN && (
+                      <p className="text-[13px] font-semibold text-risk">Lebih dari {BATAS_MENIT_JALAN} menit jalan kaki</p>
+                    )}
                     {t.kelas === "lebih-tinggi" && (
                       <p className="text-[13px] font-medium text-ink-2">Cadangan untuk dicek ke BPBD</p>
                     )}
@@ -356,6 +368,9 @@ function TampilanHasil({ data: d, mode, kunciTas, galatPembaruan, onPerbarui }: 
                   </p>
                 </div>
               ))
+            )}
+            {adaKandidatJauh && (
+              <p role="note" className="border-t-2 border-risk px-5 py-3 text-sm font-medium text-risk">{PERINGATAN_KANDIDAT_JAUH}</p>
             )}
           </div>
         </div>

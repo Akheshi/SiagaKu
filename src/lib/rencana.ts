@@ -25,6 +25,9 @@ type Konteks = { input: InputRencanaT; skor: HasilSkor };
 
 export type ItemTas = { id: string; barang: string; ket?: string; untuk?: string };
 
+/** Evakuasi tsunami: utamakan berjalan kaki (panduan BMKG/BNPB). */
+export const JALAN_KAKI = "Utamakan berjalan kaki. Kendaraan mudah terjebak macet dan menghalangi jalur evakuasi.";
+
 export const CATATAN_CADANGAN = "Simpan cadangan air dan makanan untuk seluruh penghuni secara terpisah di rumah.";
 
 /** Perlengkapan portabel mengacu Kebutuhan Dasar Tas Siaga Bencana, Buku Saku BNPB. */
@@ -96,6 +99,7 @@ export function rencanaTemplate({ input, skor }: Konteks): Rencana {
     ? [
         SAAT_GUNCANGAN,
         rute_narasi,
+        JALAN_KAKI,
         "Jangan kembali mengambil barang.",
         "Jika evakuasi tsunami, bertahan di tempat tinggi sampai BMKG atau BPBD menyatakan aman.",
       ]

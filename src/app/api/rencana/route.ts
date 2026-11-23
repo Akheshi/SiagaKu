@@ -61,6 +61,7 @@ export async function POST(request: Request) {
     sumberTitik,
     rencana,
     sumberRencana: ai ? "ai" : "template",
+    fokusBawaan: template.fokus.map((f) => f.faktor),
     tasDasar: tasDasar(input.penghuni),
   });
 }

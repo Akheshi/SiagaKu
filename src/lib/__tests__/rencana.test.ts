@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SAAT_GUNCANGAN, setelahGuncangan } from "../arahan";
 import { CONTOH_BENGKULU } from "../input";
-import { opsiFokus, periksaRencanaAI, rencanaTemplate, RencanaSchema, tasDasar, tasTambahanDasar } from "../rencana";
+import { opsiFokus, periksaRencanaAI, rencanaTemplate, RencanaSchema, tasDasar, tasTambahanDasar, JALAN_KAKI } from "../rencana";
 import { hitungSkor, keInputSkorDummy } from "./helper";
 
 const input = CONTOH_BENGKULU;
@@ -40,6 +40,12 @@ describe("rencanaTemplate", () => {
     expect(r.langkah_darurat.slice(0, 2)).toEqual([SAAT_GUNCANGAN, setelahGuncangan(true)]);
     expect(r.rute_narasi).toBe(setelahGuncangan(true));
     expect(r.rute_narasi).toContain("kuat atau lama");
+  });
+
+  it("menganjurkan evakuasi jalan kaki hanya untuk rumah pesisir", () => {
+    expect(rencanaTemplate({ input, skor }).langkah_darurat).toContain(JALAN_KAKI);
+    const jauh = { ...input, jarakPantai: "gt5" as const };
+    expect(rencanaTemplate({ input: jauh, skor }).langkah_darurat).not.toContain(JALAN_KAKI);
   });
 
   it("menerima catatan obat sepanjang batas isian formulir", () => {

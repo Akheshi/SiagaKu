@@ -50,6 +50,7 @@ it.each([
 
   expect(respons.ok).toBe(true);
   expect(hasil.gempaTersedia).toBe(tersedia);
+  expect(hasil.fokusBawaan).toEqual(hasil.rencana.fokus.map((f: { faktor: string }) => f.faktor));
   expect(hasil.gempaDekat).toBe(dekat);
   expect(hasil.skor.lengkap).toBe(tersedia);
   expect(hasil.skor.rincian.find((f: { faktor: string }) => f.faktor === "Aktivitas gempa")).toMatchObject({

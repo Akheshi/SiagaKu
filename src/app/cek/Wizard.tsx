@@ -248,7 +248,7 @@ export default function Wizard() {
     ) : stPantai === "ok" ? (
       <p className="mb-3 text-sm text-ink-3">Garis pantai belum ditemukan dalam radius pencarian 10 km. Ganti jika kurang tepat.</p>
     ) : (
-      <p className="mb-3 text-sm text-ink-3">Jarak belum bisa dideteksi otomatis. Pilih perkiraanmu.</p>
+      <p className="mb-3 text-sm text-ink-3">Jarak belum bisa dideteksi otomatis. Deteksi otomatis paling andal di Provinsi Bengkulu. Pilih perkiraanmu.</p>
     );
 
   return (

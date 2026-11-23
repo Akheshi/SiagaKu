@@ -57,7 +57,7 @@ Data keluarga ─┐
 2. DeepSeek menerima opsi persiapan yang dibuat aplikasi. Server hanya menerima dua indeks yang sesuai dengan daftar. Nama keluarga, koordinat rumah, dan tulisan obat rutin tidak dikirim ke DeepSeek.
 3. Jika AI gagal atau melampaui batas 8 detik, rencana tampil dengan urutan persiapan bawaan.
 
-Dalam satu uji contoh Kota Bengkulu, urutan bawaan memilih jarak ke pantai dan bangunan. DeepSeek memilih jarak ke pantai dan kerentanan keluarga, sehingga pendampingan anggota keluarga muncul di daftar persiapan awal.
+Dalam satu uji contoh Kota Bengkulu, urutan bawaan memilih jarak ke pantai dan bangunan. DeepSeek memilih jarak ke pantai dan kerentanan keluarga. Untuk keluarga dengan lansia dan balita, kesepakatan siapa yang mendampingi bisa dibuat minggu ini, sedangkan perkuatan bangunan butuh biaya dan waktu. Jika pilihan DeepSeek berbeda, halaman hasil menampilkan urutan dari skor saja sebagai pembanding.
 
 ### Cara isian dipakai
 
@@ -133,6 +133,9 @@ src/
     coast.ts              jarak ke garis pantai
     safePoints.ts         seleksi titik aman dua tingkat
     rencana.ts            skema rencana, template cadangan, tas siaga
+    arahan.ts             arahan saat dan setelah guncangan
+    bagikan.ts            mode contoh/pribadi, teks WhatsApp
+    hasil.ts              bentuk respons hasil, kunci penyimpanan
     bmkg.ts, input.ts     parser BMKG, skema input
     server/               pengambil data eksternal, AI, batas laju
     __tests__/            unit test
@@ -143,7 +146,8 @@ scripts/                  pengunduh data
 ## Batasan & pengembangan lanjutan
 
 - Ketinggian dari model elevasi global (resolusi ±90 m), bukan survei lapangan.
-- Data kandidat bawaan mencakup Provinsi Bengkulu. Di daerah lain, kelengkapan data bergantung pada Overpass.
+- Kandidat lokasi dan jarak pantai otomatis saat ini andal untuk Provinsi Bengkulu (data bawaan). Di wilayah lain, aplikasi mencoba Overpass, yang sering tidak merespons. Jika gagal, pengguna memilih jarak pantai sendiri dan rencana tampil tanpa kandidat.
+- Kandidat yang lebih dari 30 menit berjalan kaki diberi peringatan, karena waktu sebanyak itu bisa tidak cukup saat peringatan tsunami.
 - Rentang 15 gempa terakhir mengikuti data BMKG. Batas 5 km dari pantai adalah aturan aplikasi untuk skor dan arahan awal. Ikuti peringatan resmi yang berlaku di lokasimu.
 - Akses dan kelayakan setiap kandidat harus dicek ke BPBD. Jarak garis lurus dan taksiran waktu hanya membantu persiapan awal.
 - Lanjutan: data TES (tempat evakuasi sementara) resmi dari BPBD, rute jalan kaki nyata, mode luring (PWA), dan versi untuk sekolah.
@@ -154,7 +158,7 @@ Bagian ini wajib menurut panduan lomba.
 
 **AI coding assistant**
 - **Claude Code (Anthropic)** — membantu menulis, menguji, dan merapikan kode, serta menyusun dokumen perencanaan, atas arahan dan keputusan tim. Commit yang dibantu ditandai `Co-Authored-By: Claude` di riwayat git.
-- **OpenAI Codex** — membantu menulis dan meninjau kode, menguji regresi di browser, dan menyelaraskan dokumentasi.
+- **OpenAI Codex** — membantu menulis dan meninjau kode, menguji regresi di browser, dan menyelaraskan dokumentasi. Commit yang dibantu Codex tidak memakai penanda khusus di riwayat git.
 
 **AI di dalam produk**
 - **DeepSeek** (`deepseek-chat`) — membaca kondisi keluarga dan memilih dua *fokus persiapan* paling mendesak ("Kerjakan lebih dulu") dari daftar faktor-tindakan yang disusun aplikasi. AI hanya mengembalikan nomor opsi; teks, skor, langkah darurat, dan peran selalu dari aplikasi, sehingga AI tidak bisa menambahkan angka, tempat, atau instruksi baru. Gagal/tidak valid/lebih dari 8 detik → fokus bawaan dari skor.
@@ -163,6 +167,8 @@ Bagian ini wajib menurut panduan lomba.
 - Proyek dibuat dari `create-next-app` (Next.js). Tidak memakai template UI siap pakai; tampilan dirancang sendiri dengan konsep "bahasa rambu evakuasi".
 
 **Library open-source:** Next.js, React (MIT) · Tailwind CSS (MIT) · Leaflet (BSD-2-Clause) · react-leaflet (Hippocratic License 2.1) · zod (MIT) · Vitest (MIT) · TypeScript (Apache-2.0) · ESLint (MIT).
+
+**Alat uji di luar kode aplikasi:** Playwright (Apache-2.0), Google Chrome, dan Lighthouse untuk pengujian alur dan audit halaman di peramban.
 
 **Font:** Barlow Condensed, IBM Plex Sans, IBM Plex Mono, IBM Plex Serif — SIL Open Font License, via Google Fonts.
 

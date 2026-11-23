@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { buttonClass } from "@/components/ButtonLink";
 import TautanRencanaLama from "@/components/TautanRencanaLama";
-import { fmt, KETERANGAN_SKOR_SEMENTARA, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
+import { BATAS_MENIT_JALAN, fmt, KETERANGAN_SKOR_SEMENTARA, PERINGATAN_KANDIDAT_JAUH, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
 import { inputMode, modeDariUrl, qsMode, type ModeAktif } from "@/lib/bagikan";
 import { KUNCI_INPUT, type InputRencanaT } from "@/lib/input";
 import { CATATAN_CADANGAN } from "@/lib/rencana";
@@ -258,6 +258,9 @@ function IsiLembar({ mode }: { mode: ModeAktif }) {
                 ))}
               </tbody>
             </table>
+            {pesisir(input) && kandidat.some((t) => t.menit > BATAS_MENIT_JALAN) && (
+              <p className="mt-1 text-[13px] font-semibold print:text-[11px]">{PERINGATAN_KANDIDAT_JAUH}</p>
+            )}
           </>
         )}
 

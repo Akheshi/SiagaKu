@@ -16,6 +16,8 @@ export type HasilRencana = {
   sumberTitik: "bawaan" | "overpass" | "tidak-tersedia";
   rencana: Rencana;
   sumberRencana: "ai" | "template";
+  /** Faktor fokus menurut urutan skor saja, untuk dibandingkan dengan pilihan AI. */
+  fokusBawaan?: string[];
   tasDasar: ItemTas[];
 };
 
@@ -23,13 +25,19 @@ export type HasilRencana = {
 // Buat ulang hasil lama agar arahan sebelumnya tidak ditampilkan atau dicetak.
 export function kunciPenyimpananRencana(mode: ModeAktif) {
   return mode.jenis === "contoh"
-    ? { hasil: "siagaku:hasil:contoh:v6", tas: "siagaku:tas:contoh" }
-    : { hasil: "siagaku:hasil:v6", tas: "siagaku:tas" };
+    ? { hasil: "siagaku:hasil:contoh:v7", tas: "siagaku:tas:contoh" }
+    : { hasil: "siagaku:hasil:v7", tas: "siagaku:tas" };
 }
 
 export function kunciInput(i: InputRencanaT): string {
   return JSON.stringify(i);
 }
+
+/** Di atas batas ini, jalan kaki ke kandidat kemungkinan terlalu lama saat peringatan tsunami. */
+export const BATAS_MENIT_JALAN = 30;
+
+export const PERINGATAN_KANDIDAT_JAUH =
+  "Ada kandidat yang lebih dari 30 menit berjalan kaki. Saat peringatan tsunami, waktu sebanyak itu bisa tidak cukup. Tanyakan tempat evakuasi sementara atau gedung evakuasi terdekat ke BPBD.";
 
 export const KETERANGAN_SKOR_SEMENTARA = "Data aktivitas gempa BMKG belum tersedia, jadi faktor itu (maks. 15 poin) belum dihitung. Skor sebenarnya bisa lebih tinggi.";
 
