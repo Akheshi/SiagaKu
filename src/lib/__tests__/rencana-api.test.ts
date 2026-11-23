@@ -54,7 +54,7 @@ it.each([
   expect(hasil.gempaDekat).toBe(dekat);
   expect(hasil.skor.lengkap).toBe(tersedia);
   expect(hasil.skor.rincian.find((f: { faktor: string }) => f.faktor === "Aktivitas gempa")).toMatchObject({
-    nilai: dekat === null ? "Data BMKG belum tersedia" : `${dekat} gempa M5+ ≤ 300 km`,
+    nilai: dekat === null ? "Data BMKG belum tersedia" : `${dekat} dari 15 gempa M5+ terbaru ≤ 300 km`,
     poin: dekat === 1 ? 5 : 0,
   });
 });

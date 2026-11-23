@@ -90,6 +90,7 @@ export default function Wizard() {
   const [stElevasi, setStElevasi] = useState<Status>("memuat");
   const [stPantai, setStPantai] = useState<Status>("memuat");
   const [gps, setGps] = useState<string | null>(null);
+  const [ingatkanAwal, setIngatkanAwal] = useState(false);
   const [galat, setGalat] = useState<Record<string, string>>({});
   const judulRef = useRef<HTMLHeadingElement>(null);
   const lokasiAktif = useRef(draf.lokasi);
@@ -323,6 +324,11 @@ export default function Wizard() {
             </p>
           )}
 
+          {ingatkanAwal && lat === AWAL.lat && lon === AWAL.lon && (
+            <p role="alert" className="mt-3 text-sm font-semibold text-risk">
+              Pin masih di titik awal Kota Bengkulu. Geser pin ke rumahmu, atau tekan lanjut sekali lagi jika rumahmu memang di sini.
+            </p>
+          )}
           <div className="mt-6 flex flex-wrap justify-between gap-3">
             <Link href="/" className={buttonClass("plain", "flex-1 sm:flex-none")}>
               Kembali
@@ -330,6 +336,11 @@ export default function Wizard() {
             <button
               type="button"
               onClick={() => {
+                // Sekali ingatkan bila pin belum dipindah dari titik awal Kota Bengkulu.
+                if (lat === AWAL.lat && lon === AWAL.lon && !ingatkanAwal) {
+                  setIngatkanAwal(true);
+                  return;
+                }
                 permintaanGps.current++;
                 setGps(null);
                 setLangkah(2);

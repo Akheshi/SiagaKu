@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hitungGempaDekat, parseGempa, type Gempa } from "../bmkg";
+import { hitungGempaDekat, parseGempa, rapikanWilayah, type Gempa } from "../bmkg";
 
 const MENTAH = {
   Tanggal: "22 Nov 2026",
@@ -26,7 +26,7 @@ describe("parseGempa", () => {
       kedalamanKm: 10,
       lat: -4.12,
       lon: 101.57,
-      wilayah: "Pusat gempa berada di laut 98 km BaratDaya Kaur",
+      wilayah: "Pusat gempa berada di laut 98 km barat daya Kaur",
       potensi: "Tidak berpotensi tsunami",
       dirasakan: "III Kaur",
     });
@@ -55,5 +55,19 @@ describe("hitungGempaDekat", () => {
 
   it("daftar kosong = 0", () => {
     expect(hitungGempaDekat([], titik, 300)).toBe(0);
+  });
+});
+
+describe("rapikanWilayah", () => {
+  it("merapikan arah dan nama wilayah kapital dari BMKG", () => {
+    expect(rapikanWilayah("87 km TimurLaut MALUKUBRTDAYA")).toBe("87 km timur laut Maluku Barat Daya");
+    expect(rapikanWilayah("199 km BaratLaut TAHUNA-KEP.SANGIHE-SULUT")).toBe("199 km barat laut Tahuna, Kep. Sangihe, Sulut");
+    expect(rapikanWilayah("114 km BaratDaya NIASBARAT-SUMUT")).toBe("114 km barat daya Nias Barat, Sumut");
+    expect(rapikanWilayah("49 km TimurLaut RUTENG-MANGGARAI-NTT")).toBe("49 km timur laut Ruteng, Manggarai, NTT");
+    expect(rapikanWilayah("90 km BaratDaya TANIMBAR")).toBe("90 km barat daya Tanimbar");
+  });
+
+  it("membiarkan teks yang tidak sesuai pola", () => {
+    expect(rapikanWilayah("Contoh Bengkulu")).toBe("Contoh Bengkulu");
   });
 });

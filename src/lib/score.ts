@@ -124,7 +124,9 @@ export function hitungSkor(input: InputSkor): HasilSkor {
         elevasiM === null
           ? "Data ketinggian belum tersedia. Skor memakai asumsi 25 poin."
           : elevasiM < 30
-            ? "Elevasi yang lebih rendah menambah poin pada faktor ini."
+            ? jarakPantai === "gt5"
+              ? "Elevasi rendah menambah poin. Jauh dari pantai, faktor ini lebih terkait genangan banjir daripada tsunami."
+              : "Elevasi yang lebih rendah menambah poin pada faktor ini."
             : "Elevasi 30 m ke atas mendapat poin terendah untuk faktor ini.",
     },
     {
@@ -139,12 +141,12 @@ export function hitungSkor(input: InputSkor): HasilSkor {
     },
     {
       faktor: "Aktivitas gempa",
-      nilai: jumlahGempaDekat === null ? "Data BMKG belum tersedia" : `${jumlahGempaDekat} gempa M5+ ≤ 300 km`,
+      nilai: jumlahGempaDekat === null ? "Data BMKG belum tersedia" : `${jumlahGempaDekat} dari 15 gempa M5+ terbaru ≤ 300 km`,
       poin: poinGempa(jumlahGempaDekat ?? 0),
       maks: 15,
       alasan: jumlahGempaDekat === null
         ? "Faktor ini belum masuk dalam skor sementara."
-        : "Indikator aktivitas terkini dari 15 gempa M5+ terakhir yang dicatat BMKG.",
+        : "Hanya aktivitas terkini dari 15 gempa M5+ terbaru di seluruh Indonesia, bukan potensi bahaya jangka panjang. Untuk itu, cek InaRISK.",
     },
     {
       faktor: "Bangunan",
