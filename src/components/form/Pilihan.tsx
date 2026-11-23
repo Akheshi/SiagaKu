@@ -47,6 +47,7 @@ export function GrupPilihan<T extends string>({
                 id={id}
                 name={nama}
                 value={o.nilai}
+                aria-describedby={galat ? idGalat : undefined}
                 checked={nilai === o.nilai}
                 onChange={() => onUbah(o.nilai)}
                 className="peer absolute inset-0 cursor-pointer opacity-0"

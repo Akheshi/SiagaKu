@@ -67,7 +67,16 @@ const fmt = (n: number, d: number) =>
 function bacaDraf(): Draf {
   try {
     const s = localStorage.getItem(KUNCI_DRAF);
-    if (s) return { ...DRAF_KOSONG, ...JSON.parse(s) };
+    if (s) {
+      const d: Draf = { ...DRAF_KOSONG, ...JSON.parse(s) };
+      return {
+        ...d,
+        elevasiM: null,
+        jarakPantaiKm: null,
+        jarakPantai: d.pantaiOtomatis ? undefined : d.jarakPantai,
+        pantaiOtomatis: false,
+      };
+    }
   } catch {
     /* localStorage tidak tersedia */
   }
@@ -83,6 +92,9 @@ export default function Wizard() {
   const [gps, setGps] = useState<string | null>(null);
   const [galat, setGalat] = useState<Record<string, string>>({});
   const judulRef = useRef<HTMLHeadingElement>(null);
+  const lokasiAktif = useRef(draf.lokasi);
+  const permintaanGps = useRef(0);
+  const fokusGalat = useRef<string | null>(null);
 
   const ubah = (patch: Partial<Draf>) => {
     setDraf((d) => ({ ...d, ...patch }));
@@ -97,6 +109,14 @@ export default function Wizard() {
     if (hapus.length) setGalat((g) => Object.fromEntries(Object.entries(g).filter(([k]) => !hapus.includes(k))));
   };
 
+  function ubahLokasi(lokasi: LatLon) {
+    if (lokasi.lat === lokasiAktif.current.lat && lokasi.lon === lokasiAktif.current.lon) return;
+    lokasiAktif.current = lokasi;
+    setStElevasi("memuat");
+    setStPantai("memuat");
+    ubah({ lokasi, elevasiM: null, jarakPantaiKm: null, jarakPantai: undefined, pantaiOtomatis: false });
+  }
+
   // simpan draf agar tidak hilang saat kembali / muat ulang
   useEffect(() => {
     try {
@@ -107,72 +127,82 @@ export default function Wizard() {
   }, [draf]);
 
   // ambil ketinggian & jarak pantai setiap lokasi berubah (debounce 400 ms)
-  const { lat, lon } = draf.lokasi;
+  const { lokasi } = draf;
+  const { lat, lon } = lokasi;
   useEffect(() => {
     const ctrl = new AbortController();
-    const t = setTimeout(async () => {
-      setStElevasi("memuat");
-      setStPantai("memuat");
+    const masihAktif = () => !ctrl.signal.aborted && lokasiAktif.current === lokasi;
+
+    const t = setTimeout(() => {
       const q = `lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}`;
-      const ambil = (p: string) => fetch(`/api/${p}?${q}`, { signal: ctrl.signal }).then((r) => r.json());
+      const ambil = <T,>(p: string): Promise<T | null> =>
+        fetch(`/api/${p}?${q}`, { signal: ctrl.signal })
+          .then((r) => r.ok ? r.json() : null)
+          .catch(() => null);
 
-      ambil("elevasi")
-        .then((r) => {
-          setDraf((d) => ({ ...d, elevasiM: r.ok ? r.elevasiM : null }));
-          setStElevasi(r.ok ? "ok" : "gagal");
-        })
-        .catch((e) => e.name !== "AbortError" && setStElevasi("gagal"));
+      void ambil<{ ok: boolean; elevasiM: number | null }>("elevasi").then((r) => {
+        if (!masihAktif()) return;
+        const elevasiM = r?.ok ? r.elevasiM : null;
+        setDraf((d) => d.lokasi === lokasi ? { ...d, elevasiM } : d);
+        setStElevasi(elevasiM === null ? "gagal" : "ok");
+      });
 
-      ambil("pantai")
-        .then((r) => {
-          setDraf((d) => {
-            if (r.ok) {
-              const ikutOtomatis = d.pantaiOtomatis || d.jarakPantai === undefined;
-              return {
-                ...d,
-                jarakPantaiKm: r.jarakKm,
-                ...(ikutOtomatis ? { jarakPantai: r.rentang, pantaiOtomatis: true } : {}),
-              };
-            }
-            // gagal: buang pilihan otomatis lama (milik lokasi sebelumnya)
-            return {
-              ...d,
-              jarakPantaiKm: null,
-              ...(d.pantaiOtomatis ? { jarakPantai: undefined, pantaiOtomatis: false } : {}),
-            };
-          });
-          setStPantai(r.ok ? "ok" : "gagal");
-        })
-        .catch((e) => e.name !== "AbortError" && setStPantai("gagal"));
+      void ambil<{ ok: boolean; jarakKm: number; rentang: RentangPantai }>("pantai").then((r) => {
+        if (!masihAktif()) return;
+        if (!r?.ok) {
+          setStPantai("gagal");
+          return;
+        }
+        setDraf((d) => d.lokasi === lokasi ? {
+          ...d,
+          jarakPantaiKm: r.jarakKm,
+          ...(d.jarakPantai === undefined ? { jarakPantai: r.rentang, pantaiOtomatis: true } : {}),
+        } : d);
+        setStPantai("ok");
+      });
     }, 400);
     return () => {
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [lat, lon]);
+  }, [lokasi, lat, lon]);
 
   useEffect(() => {
     judulRef.current?.focus();
   }, [langkah]);
+
+  useEffect(() => {
+    const nama = fokusGalat.current;
+    if (!nama) return;
+    fokusGalat.current = null;
+    const pesan = document.getElementById(`${nama}-galat`);
+    const grup = pesan?.closest("fieldset");
+    grup?.querySelector<HTMLInputElement>(`input[name="${nama}"]`)?.focus({ preventScroll: true });
+    grup?.scrollIntoView({ block: "start" });
+  }, [galat]);
 
   function pakaiGps() {
     if (!("geolocation" in navigator)) {
       setGps("Perangkat ini tidak mendukung GPS. Geser pin di peta.");
       return;
     }
+    const permintaan = ++permintaanGps.current;
     setGps("Mencari lokasimu…");
     navigator.geolocation.getCurrentPosition(
       (p) => {
-        ubah({ lokasi: { lat: p.coords.latitude, lon: p.coords.longitude } });
+        if (permintaan !== permintaanGps.current) return;
+        ubahLokasi({ lat: p.coords.latitude, lon: p.coords.longitude });
         setPusatKey((k) => k + 1);
         setGps(`Lokasi ditemukan (akurasi ±${Math.round(p.coords.accuracy)} m). Geser pin jika kurang tepat.`);
       },
-      (e) =>
+      (e) => {
+        if (permintaan !== permintaanGps.current) return;
         setGps(
           e.code === e.PERMISSION_DENIED
             ? "Izin lokasi ditolak. Tidak apa-apa, geser pin di peta ke rumahmu."
             : "Lokasi belum bisa ditemukan. Geser pin di peta ke rumahmu.",
-        ),
+        );
+      },
       { enableHighAccuracy: true, timeout: 10_000 },
     );
   }
@@ -184,11 +214,9 @@ export default function Wizard() {
     if (!draf.sungai) g.sungai = "Pilih jarak rumah ke sungai.";
     if (!draf.bangunan) g.bangunan = "Pilih jenis bangunan rumah.";
     if (!draf.kendaraan) g.kendaraan = "Pilih kendaraan yang biasa tersedia.";
+    fokusGalat.current = Object.keys(g)[0] ?? null;
     setGalat(g);
-    if (Object.keys(g).length) {
-      document.getElementById(`${Object.keys(g)[0]}-galat`)?.closest("fieldset")?.scrollIntoView({ block: "center" });
-      return;
-    }
+    if (fokusGalat.current) return;
     const hasil = InputRencana.safeParse(draf);
     if (!hasil.success) {
       setGalat({ umum: "Ada isian yang belum sesuai. Periksa lagi isian di atas." });
@@ -234,7 +262,7 @@ export default function Wizard() {
             Di mana rumahmu?
           </h1>
           <p className="max-w-[60ch] text-ink-2">
-            Geser pin ke atap rumahmu supaya perkiraan ketinggian dan jarak lebih akurat.
+            Pastikan pin berada di rumahmu sebelum lanjut.
           </p>
 
           <div className="mt-6 border-2 border-ink bg-white">
@@ -247,11 +275,21 @@ export default function Wizard() {
                 Pakai lokasi saya
               </button>
               <span className="text-sm text-ink-3" aria-live="polite">
-                {gps ?? "atau klik peta untuk memindahkan pin"}
+                {gps ?? (lat === AWAL.lat && lon === AWAL.lon
+                  ? "Titik awal di Kota Bengkulu. Ketuk peta atau geser pin."
+                  : "Ketuk peta atau geser pin untuk mengubah titik.")}
               </span>
             </div>
-            <div className="relative z-0 h-[340px] sm:h-[420px]">
-              <MapPicker titik={draf.lokasi} onPilih={(t) => ubah({ lokasi: t })} pusatKey={pusatKey} />
+            <div className="relative z-0 h-[285px] sm:h-[420px]">
+              <MapPicker
+                titik={draf.lokasi}
+                onPilih={(lokasi) => {
+                  permintaanGps.current++;
+                  setGps(null);
+                  ubahLokasi(lokasi);
+                }}
+                pusatKey={pusatKey}
+              />
             </div>
             <dl className="grid grid-cols-2 border-t border-line sm:grid-cols-4" aria-live="polite">
               {[
@@ -283,8 +321,16 @@ export default function Wizard() {
             <Link href="/" className={buttonClass("plain", "flex-1 sm:flex-none")}>
               Kembali
             </Link>
-            <button type="button" onClick={() => setLangkah(2)} className={buttonClass("go", "flex-1 sm:flex-none")}>
-              Lanjut ke data keluarga
+            <button
+              type="button"
+              onClick={() => {
+                permintaanGps.current++;
+                setGps(null);
+                setLangkah(2);
+              }}
+              className={buttonClass("go", "flex-1 sm:flex-none")}
+            >
+              Pakai titik ini dan lanjut
             </button>
           </div>
         </section>
@@ -302,7 +348,7 @@ export default function Wizard() {
               opsi={OPSI_PANTAI}
               nilai={draf.jarakPantai}
               onUbah={(v) => ubah({ jarakPantai: v, pantaiOtomatis: draf.jarakPantaiKm !== null && v === draf.jarakPantai && draf.pantaiOtomatis })}
-              galat={galat.pantai}
+              galat={draf.jarakPantai ? undefined : galat.pantai}
               catatan={ketPantai}
             />
             <GrupPilihan
@@ -325,6 +371,7 @@ export default function Wizard() {
                           type="radio"
                           id={`bangunan-${o.nilai}`}
                           name="bangunan"
+                          aria-describedby={galat.bangunan ? "bangunan-galat" : undefined}
                           checked={draf.bangunan === o.nilai}
                           onChange={() => ubah({ bangunan: o.nilai })}
                           className="peer absolute inset-0 cursor-pointer opacity-0"
