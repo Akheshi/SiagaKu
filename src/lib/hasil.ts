@@ -1,4 +1,5 @@
 /** Bentuk respons POST /api/rencana — dipakai halaman hasil & lembar cetak. */
+import type { ModeRencana } from "./bagikan";
 import type { InputRencanaT } from "./input";
 import type { ItemTas, Rencana } from "./rencana";
 import type { TitikAman } from "./safePoints";
@@ -20,10 +21,16 @@ export type HasilRencana = {
 
 /** Hasil terakhir disimpan agar muat ulang tidak memanggil AI lagi (PRD F14). */
 // Buat ulang hasil lama agar arahan sebelumnya tidak ditampilkan atau dicetak.
-export function kunciPenyimpananRencana(contoh: boolean) {
-  return contoh
-    ? { hasil: "siagaku:hasil:contoh:v5", tas: "siagaku:tas:contoh" }
-    : { hasil: "siagaku:hasil:v5", tas: "siagaku:tas" };
+// Rencana kiriman orang lain disimpan terpisah agar tidak menimpa rencana pribadi.
+export function kunciPenyimpananRencana(mode: ModeRencana) {
+  switch (mode.jenis) {
+    case "contoh":
+      return { hasil: "siagaku:hasil:contoh:v5", tas: "siagaku:tas:contoh" };
+    case "bagikan":
+      return { hasil: "siagaku:hasil:bagikan:v5", tas: `siagaku:tas:bagikan:${mode.kode.slice(-24)}` };
+    default:
+      return { hasil: "siagaku:hasil:v5", tas: "siagaku:tas" };
+  }
 }
 
 export function kunciInput(i: InputRencanaT): string {

@@ -6,7 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { buttonClass } from "@/components/ButtonLink";
 import { fmt, KETERANGAN_SKOR_SEMENTARA, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
-import { CONTOH_BENGKULU, KUNCI_INPUT, InputRencana, type InputRencanaT } from "@/lib/input";
+import { inputMode, kodeRencana, modeDariUrl, qsMode, type ModeRencana } from "@/lib/bagikan";
+import { KUNCI_INPUT, type InputRencanaT } from "@/lib/input";
 
 const ResultMap = dynamic(() => import("@/components/map/ResultMap"), {
   ssr: false,
@@ -35,14 +36,8 @@ function baca<T>(kunci: string): T | null {
   }
 }
 
-function inputAwal(contoh: boolean): InputRencanaT | null {
-  if (contoh) return CONTOH_BENGKULU;
-  const cek = InputRencana.safeParse(baca(KUNCI_INPUT));
-  return cek.success ? cek.data : null;
-}
-
-function keadaanAwal(contoh: boolean, kunciHasil: string): Keadaan {
-  const input = inputAwal(contoh);
+function keadaanAwal(mode: ModeRencana, kunciHasil: string): Keadaan {
+  const input = inputMode(mode, () => baca(KUNCI_INPUT));
   if (!input) return { tahap: "kosong" };
   const tersimpan = baca<{ kunci: string; data: HasilRencana }>(kunciHasil);
   if (tersimpan?.kunci === kunciInput(input)) return { tahap: "siap", input, data: tersimpan.data };
@@ -52,13 +47,13 @@ function keadaanAwal(contoh: boolean, kunciHasil: string): Keadaan {
 const PESAN_MUAT = ["Menghitung skor risiko…", "Mencari kandidat lokasi di sekitar rumah…", "Menyusun rencana keluarga…"];
 
 export default function Hasil() {
-  const contoh = useSearchParams().get("contoh") === "bengkulu";
-  return <IsiHasil key={String(contoh)} contoh={contoh} />;
+  const mode = modeDariUrl(useSearchParams());
+  return <IsiHasil key={`${mode.jenis}${qsMode(mode)}`} mode={mode} />;
 }
 
-function IsiHasil({ contoh }: { contoh: boolean }) {
-  const { hasil: kunciHasil, tas: kunciTas } = kunciPenyimpananRencana(contoh);
-  const [k, setK] = useState<Keadaan>(() => keadaanAwal(contoh, kunciHasil));
+function IsiHasil({ mode }: { mode: ModeRencana }) {
+  const { hasil: kunciHasil, tas: kunciTas } = kunciPenyimpananRencana(mode);
+  const [k, setK] = useState<Keadaan>(() => keadaanAwal(mode, kunciHasil));
   const [pesanKe, setPesanKe] = useState(0);
 
   const muat = useCallback(async (input: InputRencanaT, sebelumnya?: HasilRencana) => {
@@ -148,7 +143,7 @@ function IsiHasil({ contoh }: { contoh: boolean }) {
   return (
     <TampilanHasil
       data={k.data}
-      contoh={contoh}
+      mode={mode}
       kunciTas={kunciTas}
       galatPembaruan={k.galatPembaruan}
       onPerbarui={() => {
@@ -159,31 +154,42 @@ function IsiHasil({ contoh }: { contoh: boolean }) {
   );
 }
 
-function teksBagikan(d: HasilRencana) {
-  return [
-    `Rencana siaga ${d.input.namaKeluarga ? `Keluarga ${d.input.namaKeluarga}` : "keluarga kita"} (SiagaKu)`,
-    d.skor.lengkap
-      ? `Skor risiko rumah: ${d.skor.total}/100 (${d.skor.kategori})`
-      : `Skor sementara: ${d.skor.total}/100. ${KETERANGAN_SKOR_SEMENTARA}`,
-    ...d.rencana.langkah_darurat.map((l, i) => `${i + 1}. ${l}`),
-    ...((d.rencana.fokus).length ? ["", "Kerjakan lebih dulu:", ...d.rencana.fokus.map((f) => `- ${f.tindakan}`)] : []),
-    `Buat rencanamu sendiri: ${window.location.origin}/cek`,
-  ]
-    .join("\n");
+/** Tautan yang membuka rencana ini (dengan data yang sama) di perangkat penerima. */
+function tautanRencana(mode: ModeRencana, input: InputRencanaT) {
+  const qs = mode.jenis === "contoh" ? qsMode(mode) : `?r=${kodeRencana(input)}`;
+  return `${window.location.origin}/hasil${qs}`;
 }
 
-function TampilanHasil({ data: d, contoh, kunciTas, galatPembaruan, onPerbarui }: {
+function teksBagikan(d: HasilRencana, mode: ModeRencana) {
+  const nama = d.input.namaKeluarga ? `Keluarga ${d.input.namaKeluarga}` : "keluarga kita";
+  return [
+    `*Rencana siaga ${nama}*`,
+    d.skor.lengkap
+      ? `Skor risiko rumah: ${d.skor.total}/100 (${d.skor.kategori.toLowerCase()})`
+      : `Skor sementara: ${d.skor.total}/100. ${KETERANGAN_SKOR_SEMENTARA}`,
+    "",
+    "*Saat gempa:*",
+    ...d.rencana.langkah_darurat.map((l, i) => `${i + 1}. ${l}`),
+    ...(d.rencana.fokus.length ? ["", "*Kerjakan lebih dulu:*", ...d.rencana.fokus.map((f) => `- ${f.tindakan}`)] : []),
+    "",
+    "Peta, tugas tiap anggota, isi tas siaga, dan lembar cetaknya:",
+    tautanRencana(mode, d.input),
+  ].join("\n");
+}
+
+function TampilanHasil({ data: d, mode, kunciTas, galatPembaruan, onPerbarui }: {
   data: HasilRencana;
-  contoh: boolean;
+  mode: ModeRencana;
   kunciTas: string;
   galatPembaruan?: string;
   onPerbarui: () => void;
 }) {
   const { input, skor, titik, rencana } = d;
   const warna = skor.lengkap ? warnaKategori(skor.kategori) : { teks: "text-ink", bingkai: "border-ink" };
-  const judul = contoh
+  const kiriman = mode.jenis === "bagikan";
+  const judul = mode.jenis === "contoh"
     ? "Contoh rencana: Kota Bengkulu"
-    : `Rencana siaga ${input.namaKeluarga ? `Keluarga ${input.namaKeluarga}` : "keluargamu"}`;
+    : `Rencana siaga ${input.namaKeluarga ? `Keluarga ${input.namaKeluarga}` : kiriman ? "keluarga" : "keluargamu"}`;
   const faktorBesar = [...skor.rincian].sort((a, b) => b.poin / b.maks - a.poin / a.maks)[0];
 
   return (
@@ -194,6 +200,14 @@ function TampilanHasil({ data: d, contoh, kunciTas, galatPembaruan, onPerbarui }
           {fmt(input.lokasi.lat, 4)}, {fmt(input.lokasi.lon, 4)} ·{" "}
           {input.elevasiM === null ? "ketinggian tidak terbaca" : `${fmt(input.elevasiM, 0)} m dpl`} · {input.penghuni} orang
         </p>
+        {kiriman && (
+          <p className="mt-3 max-w-[70ch] border-l-4 border-sign bg-white px-3 py-2 text-[15px] text-ink-2">
+            Rencana ini dibagikan lewat tautan. Ingin menghitung untuk rumahmu sendiri?{" "}
+            <Link href="/cek" className="font-semibold text-sign underline">
+              Cek risiko rumahku
+            </Link>
+          </p>
+        )}
       </div>
       <PapanRambu d={d} />
 
@@ -262,21 +276,28 @@ function TampilanHasil({ data: d, contoh, kunciTas, galatPembaruan, onPerbarui }
 
       <div className="mt-4 flex flex-wrap gap-2">
         {/* Buka ulang dokumen agar lembar membaca hasil terakhir dari penyimpanan. */}
-        <a href={contoh ? "/hasil/cetak?contoh=bengkulu" : "/hasil/cetak"} className={buttonClass("go", "min-h-11 px-4 text-[15px]")}>
+        <a href={`/hasil/cetak${qsMode(mode)}`} className={buttonClass("go", "min-h-11 px-4 text-[15px]")}>
           Cetak lembar rencana
         </a>
         <a
           className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}
-          href={`https://wa.me/?text=${encodeURIComponent(teksBagikan(d))}`}
+          href={`https://wa.me/?text=${encodeURIComponent(teksBagikan(d, mode))}`}
           target="_blank"
           rel="noopener"
         >
           Bagikan ke WhatsApp
         </a>
-        <Link href="/cek" className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}>
-          Ubah data
-        </Link>
+        {!kiriman && (
+          <Link href="/cek" className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}>
+            Ubah data
+          </Link>
+        )}
       </div>
+      {mode.jenis !== "contoh" && (
+        <p className="mt-2 text-[13px] text-ink-3">
+          Tautan WhatsApp memuat lokasi rumah dan data keluarga yang diisi, agar penerima melihat rencana yang sama.
+        </p>
+      )}
 
       <div className="mt-5 grid border-2 border-ink bg-white md:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="relative z-0 min-h-[380px] border-b-2 border-ink md:min-h-[540px] md:border-r-2 md:border-b-0">

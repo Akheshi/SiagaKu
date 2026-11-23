@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { buttonClass } from "@/components/ButtonLink";
 import { fmt, KETERANGAN_SKOR_SEMENTARA, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
-import { CONTOH_BENGKULU, InputRencana, KUNCI_INPUT, type InputRencanaT } from "@/lib/input";
+import { inputMode, modeDariUrl, qsMode, type ModeRencana } from "@/lib/bagikan";
+import { KUNCI_INPUT, type InputRencanaT } from "@/lib/input";
 
 function baca<T>(k: string): T | null {
   try {
@@ -31,24 +32,57 @@ type Keadaan =
   | { tahap: "galat"; input: InputRencanaT }
   | { tahap: "siap"; data: HasilRencana };
 
-function awal(contoh: boolean, kunciHasil: string): Keadaan {
-  const cek = InputRencana.safeParse(contoh ? CONTOH_BENGKULU : baca(KUNCI_INPUT));
-  if (!cek.success) return { tahap: "kosong" };
+function awal(mode: ModeRencana, kunciHasil: string): Keadaan {
+  const input = inputMode(mode, () => baca(KUNCI_INPUT));
+  if (!input) return { tahap: "kosong" };
 
   const simpan = baca<{ kunci: string; data: HasilRencana }>(kunciHasil);
-  return simpan?.kunci === kunciInput(cek.data)
+  return simpan?.kunci === kunciInput(input)
     ? { tahap: "siap", data: simpan.data }
-    : { tahap: "memuat", input: cek.data };
+    : { tahap: "memuat", input };
+}
+
+/** Kerangka lembar selama rencana disusun ulang (mis. tautan kiriman yang baru dibuka). */
+function MemuatLembar() {
+  const baris = "h-3 bg-[#e4dac2] motion-safe:animate-pulse";
+  return (
+    <div className="px-4 py-8" role="status" aria-live="polite">
+      <div className="mx-auto mb-4 max-w-[820px]">
+        <p className="font-mono text-sm text-ink-3">Biasanya 5–20 detik</p>
+        <h1 className="mt-1 text-[clamp(28px,3.6vw,40px)]">Menyusun lembar rencana keluarga…</h1>
+        <p className="mt-1 text-ink-2">Menghitung skor, mencari kandidat lokasi di sekitar rumah, dan memilih fokus persiapan.</p>
+      </div>
+      <div aria-hidden="true" className="mx-auto grid max-w-[820px] gap-6 border border-[#d8cdb4] bg-paper px-5 py-7 sm:px-16 sm:py-14">
+        <div className="grid grid-cols-[1fr_auto] gap-6 border-b-2 border-[#d8cdb4] pb-4">
+          <div className="grid content-start gap-3">
+            <div className={`${baris} w-2/5`} />
+            <div className="h-8 w-3/5 bg-[#e4dac2] motion-safe:animate-pulse" />
+            <div className={`${baris} w-4/5`} />
+          </div>
+          <div className="size-24 -rotate-6 border-[3px] border-double border-[#d8cdb4] sm:size-[120px]" />
+        </div>
+        {[5, 3, 4].map((n, i) => (
+          <div key={i} className="grid gap-2.5">
+            <div className="h-4 w-1/3 bg-[#d8cdb4] motion-safe:animate-pulse" />
+            {Array.from({ length: n }, (_, j) => (
+              <div key={j} className={baris} style={{ width: `${92 - ((j * 17) % 30)}%` }} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function Lembar() {
-  const contoh = useSearchParams().get("contoh") === "bengkulu";
-  return <IsiLembar key={String(contoh)} contoh={contoh} />;
+  const mode = modeDariUrl(useSearchParams());
+  return <IsiLembar key={`${mode.jenis}${qsMode(mode)}`} mode={mode} />;
 }
 
-function IsiLembar({ contoh }: { contoh: boolean }) {
-  const { hasil: kunciHasil, tas: kunciTas } = kunciPenyimpananRencana(contoh);
-  const [k, setK] = useState<Keadaan>(() => awal(contoh, kunciHasil));
+function IsiLembar({ mode }: { mode: ModeRencana }) {
+  const contoh = mode.jenis === "contoh";
+  const { hasil: kunciHasil, tas: kunciTas } = kunciPenyimpananRencana(mode);
+  const [k, setK] = useState<Keadaan>(() => awal(mode, kunciHasil));
 
   useEffect(() => {
     if (k.tahap !== "memuat") return;
@@ -76,12 +110,13 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
   }, [k, kunciHasil]);
 
   if (k.tahap === "memuat") {
-    return <p role="status" className="mx-auto max-w-[820px] px-4 pt-12 text-ink-3">Menyiapkan lembar rencana…</p>;
+    return <MemuatLembar />;
   }
   if (k.tahap === "galat") {
     return (
       <div className="mx-auto max-w-[820px] px-4 pt-12">
         <h1 className="text-4xl">Lembar rencana belum bisa disiapkan</h1>
+        <p className="mt-3 max-w-[60ch] text-ink-2">Layanan sedang sibuk atau koneksi terputus. Periksa jaringan, lalu coba lagi.</p>
         <button type="button" className={buttonClass("go", "mt-4")} onClick={() => setK({ tahap: "memuat", input: k.input })}>
           Coba lagi
         </button>
@@ -120,7 +155,7 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
   return (
     <div className="px-4 py-8 print:p-0">
       <div className="mx-auto mb-4 flex max-w-[820px] flex-wrap gap-2 print:hidden">
-        <a href={contoh ? "/hasil?contoh=bengkulu" : "/hasil"} className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}>
+        <a href={`/hasil${qsMode(mode)}`} className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}>
           Kembali ke hasil
         </a>
         <button type="button" onClick={() => window.print()} className={buttonClass("go", "min-h-11 px-4 text-[15px]")}>
