@@ -34,7 +34,6 @@ describe("rencanaTemplate", () => {
     expect(r.rute_narasi).toContain("evakuasi resmi");
     expect(r.langkah_darurat).toContain(r.rute_narasi);
     expect(r.rute_narasi).toContain("kuat atau lama");
-    expect(r.ringkasan).toContain(`${skor.total} dari 100`);
   });
 
   it("menerima catatan obat sepanjang batas isian formulir", () => {
@@ -46,7 +45,6 @@ describe("rencanaTemplate", () => {
 
   it("rumah jauh dari pantai tidak disuruh lari dari tsunami", () => {
     const r = rencanaTemplate({ input: { ...input, jarakPantai: "gt5" }, skor });
-    expect(r.ringkasan).toContain("jauh dari pantai");
     expect(r.langkah_darurat).toContain(r.rute_narasi);
     expect(r.rute_narasi).toContain("ruang terbuka");
     expect(r.rute_narasi).not.toContain("pantai");
@@ -88,7 +86,7 @@ describe("periksaRencanaAI", () => {
   });
 
   it("menolak bentuk JSON yang salah", () => {
-    expect(periksaRencanaAI({ ringkasan: "x" }, baik, opsi)).toBeNull();
+    expect(periksaRencanaAI({ teks: "x" }, baik, opsi)).toBeNull();
     expect(periksaRencanaAI("bukan objek", baik, opsi)).toBeNull();
     expect(periksaRencanaAI({ fokus: ["Bangunan"] }, baik, opsi)).toBeNull();
   });

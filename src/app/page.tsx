@@ -30,8 +30,8 @@ export default function Home() {
         </h1>
         <p className="mt-5 max-w-[52ch] text-[19px] text-ink-2">
           Tandai rumahmu di peta dan ceritakan siapa saja yang tinggal di sana. SiagaKu menghitung
-          risikonya dari data BMKG, ketinggian, dan peta terbuka, lalu menyusun rencana evakuasi yang
-          bisa dicetak dan dibagikan ke grup keluarga.
+          risikonya dari data BMKG, ketinggian, dan peta terbuka. AI lalu memilih persiapan yang paling
+          mendesak untuk keluargamu, dan rencananya bisa dicetak atau dibagikan ke grup keluarga.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <ButtonLink href="/cek" variant="go" className="w-full sm:w-auto">
@@ -75,8 +75,8 @@ export default function Home() {
             tingkat risiko karena ketinggian, posisi terhadap pantai, dan kondisi bangunannya.
           </p>
           <p>
-            Rumus skor bisa kamu periksa. AI membantu memilih tips dan peran keluarga yang perlu
-            dibahas lebih dulu.
+            Rumus skor bisa kamu periksa. AI hanya memilih dua persiapan yang paling mendesak dari daftar
+            yang disusun aplikasi, jadi tidak mengarang angka atau tempat.
           </p>
         </div>
       </section>

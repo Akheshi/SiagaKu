@@ -10,7 +10,6 @@ import type { HasilSkor } from "./score";
 const teks = (maks: number) => z.string().trim().min(1).max(maks);
 
 export const RencanaSchema = z.object({
-  ringkasan: teks(600),
   fokus: z.array(z.object({ faktor: teks(40), nilai: teks(120), tindakan: teks(240) })).max(2),
   langkah_darurat: z.array(teks(300)).min(3).max(7),
   peran_anggota: z.array(z.object({ siapa: teks(40), tugas: teks(240) })).min(1).max(8),
@@ -87,14 +86,6 @@ export function opsiFokus({ input, skor }: Konteks): OpsiFokus[] {
 export function rencanaTemplate({ input, skor }: Konteks): Rencana {
   const lambat = input.kerentanan.lansia || input.kerentanan.disabilitas || input.kerentanan.balita;
 
-  const ringkasan = [
-    skor.lengkap
-      ? `Skor risiko rumahmu ${skor.total} dari 100, kategori ${skor.kategori.toLowerCase()}.`
-      : `Skor sementara ${skor.total} dari 100. Data aktivitas gempa BMKG belum tersedia.`,
-    pesisir(input)
-      ? "Jika gempa terasa kuat atau lama di pesisir, segera evakuasi setelah guncangan mereda."
-      : "Rumahmu jauh dari pantai, jadi fokus utamanya adalah selamat dari guncangan dan reruntuhan.",
-  ].join(" ");
 
   const rute_narasi = pesisir(input)
     ? "Jika gempa terasa kuat atau lama di pesisir, segera evakuasi setelah guncangan mereda. Ikuti rambu evakuasi resmi menuju tempat yang lebih tinggi. Jauhi pantai dan tepi sungai. Jangan tunggu sirene."
@@ -132,7 +123,6 @@ export function rencanaTemplate({ input, skor }: Konteks): Rencana {
   tips_rumah.push("Sepakati satu titik kumpul keluarga jika terpisah, dan latih rute evakuasi setahun dua kali.");
 
   return {
-    ringkasan,
     fokus: opsiFokus({ input, skor }).slice(0, 2),
     langkah_darurat,
     peran_anggota: peran_anggota.slice(0, 8),

@@ -215,10 +215,10 @@ function TampilanHasil({ data: d, contoh, kunciTas, galatPembaruan, onPerbarui }
           </p>
           {skor.lengkap ? (
             <div className="relative mt-3 mb-1" aria-hidden="true">
-              <div className="grid grid-cols-[40fr_20fr_20fr_21fr] font-mono text-xs text-ink-3">
-                <div className="border-t-[5px] border-cat-rendah pt-1">0</div>
-                <div className="border-t-[5px] border-cat-sedang pt-1">40</div>
-                <div className="border-t-[5px] border-cat-tinggi pt-1">60</div>
+              <div className="grid grid-cols-[40fr_20fr_20fr_21fr] font-mono text-[11px] leading-tight text-ink-3">
+                <div className="border-t-[5px] border-cat-rendah pt-1">0 Rendah</div>
+                <div className="border-t-[5px] border-cat-sedang pt-1">40 Sedang</div>
+                <div className="border-t-[5px] border-cat-tinggi pt-1">60 Tinggi</div>
                 <div className="border-t-[5px] border-cat-sangat pt-1">80</div>
               </div>
               <span className="absolute -top-1 h-[13px] w-[3px] bg-ink" style={{ left: `${Math.min(99, skor.total)}%` }} />
@@ -352,7 +352,7 @@ function TampilanHasil({ data: d, contoh, kunciTas, galatPembaruan, onPerbarui }
                       {t.jenis} · {fmt(t.elevasiM, 0)} m dpl · {t.arah.nama}
                     </p>
                     {t.kelas === "lebih-tinggi" && (
-                      <p className="text-[13px] font-medium text-ink-2">Cadangan pemetaan · di bawah ambang tempat tinggi</p>
+                      <p className="text-[13px] font-medium text-ink-2">Lebih tinggi dari rumahmu, tetapi di bawah 30 m</p>
                     )}
                   </div>
                   <p className="text-right font-mono text-[17px] leading-tight font-semibold">
@@ -424,6 +424,8 @@ function PapanRambu({ d }: { d: HasilRencana }) {
   const judul = dekatPantai
     ? "Gempa kuat atau lama di pesisir: segera evakuasi"
     : "Setelah gempa: keluar ke ruang terbuka";
+  // Kalimat pertama arahan pesisir sama dengan judul papan; jangan diulang di bawahnya.
+  const isi = dekatPantai ? d.rencana.rute_narasi.replace(/^[^.]*\.\s*/, "") : d.rencana.rute_narasi;
   return (
     <div
       role="note"
@@ -431,7 +433,7 @@ function PapanRambu({ d }: { d: HasilRencana }) {
       className="border-4 border-sign bg-sign px-6 py-5 text-white outline-[3px] -outline-offset-[10px] outline-white sm:px-8 sm:py-6"
     >
       <h2 className="text-[clamp(26px,3.6vw,46px)] leading-none tracking-wide uppercase">{judul}</h2>
-      <p className="mt-2.5 max-w-[60ch] text-[15px] opacity-95 sm:text-[17px]">{d.rencana.rute_narasi}</p>
+      <p className="mt-2.5 max-w-[60ch] text-[15px] opacity-95 sm:text-[17px]">{isi}</p>
     </div>
   );
 }
