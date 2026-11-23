@@ -31,7 +31,7 @@ const plexSerif = IBM_Plex_Serif({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://siagaku.vercel.app"),
-  title: "SiagaKu — rencana siaga bencana untuk keluargamu",
+  title: "SiagaKu",
   description:
     "Cek risiko gempa dan tsunami di rumahmu, lihat kandidat lokasi dari peta, dan siapkan rencana keluarga yang bisa dicetak.",
 };
