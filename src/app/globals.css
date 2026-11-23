@@ -127,6 +127,7 @@
   .lembar table {
     font-size: 12px !important;
   }
+  .lembar h2 + ol li { margin: 0 !important; }
   .lembar header + h2 {
     margin-top: 10px !important;
   }

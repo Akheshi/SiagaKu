@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { buttonClass } from "@/components/ButtonLink";
-import { fmt, kunciInput, kunciPenyimpananRencana, pesisir, type HasilRencana } from "@/lib/hasil";
+import { fmt, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
 import { CONTOH_BENGKULU, InputRencana, KUNCI_INPUT } from "@/lib/input";
 
 function baca<T>(k: string): T | null {
@@ -91,6 +91,10 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
     ...d.tasDasar,
     ...rencana.tas_siaga_tambahan.map((t, i) => ({ id: `t${i}-${t.barang}`, barang: t.barang })),
   ];
+  const warna = warnaKategori(skor.kategori);
+  const faktorBesar = [...skor.rincian].sort((a, b) => b.poin / b.maks - a.poin / a.maks).slice(0, 2);
+  const tanggal = new Date(d.dibuat).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  const kandidat = d.titik.slice(0, 3);
   const judul = contoh ? "Contoh — Kota Bengkulu" : input.namaKeluarga ? `Keluarga ${input.namaKeluarga}` : "Keluarga kami";
 
   return (
@@ -105,16 +109,20 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
       </div>
 
       <article className="lembar mx-auto max-w-[820px] border border-[#d8cdb4] bg-paper px-5 py-7 font-serif text-[15.5px] leading-[1.7] text-[#1d1b16] shadow-[0_2px_0_#d8cdb4] sm:px-16 sm:py-14 print:max-w-none print:border-0 print:bg-white print:p-0 print:shadow-none">
-        <header className="grid grid-cols-[1fr_auto] gap-6 border-b-2 border-[#1d1b16] pb-4">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] gap-6 border-b-2 border-[#1d1b16] pb-4">
           <div>
             <p className="font-mono text-xs leading-snug text-[#6a6250]">LEMBAR RENCANA SIAGA KELUARGA · No. {nomorDokumen(d)}</p>
             <h1 className="mt-2 mb-1 font-serif text-[30px] leading-tight font-semibold sm:text-[34px]">{judul}</h1>
             <p>
               {fmt(input.lokasi.lat, 4)}, {fmt(input.lokasi.lon, 4)} — {input.elevasiM === null ? "ketinggian tidak terbaca" : `${fmt(input.elevasiM, 0)} m di atas laut`} — {input.penghuni} penghuni
             </p>
+            <p className="flex gap-2">Alamat:<span className="mb-1 flex-1 border-b border-dotted border-[#1d1b16]" /></p>
+            <p className="text-[13.5px] text-[#4a4436] print:text-[11px]">
+              Penyumbang risiko terbesar: {faktorBesar.map((f) => `${f.faktor.toLowerCase()} (${f.nilai})`).join("; ")} · disusun {tanggal}
+            </p>
           </div>
           <div
-            className="grid size-24 -rotate-6 place-items-center border-[3px] border-double border-risk p-2 text-center font-mono text-[11px] leading-tight font-semibold text-risk sm:size-[132px]"
+            className={`mr-2 grid size-24 -rotate-6 place-items-center border-[3px] border-double p-2 text-center font-mono text-[11px] leading-tight font-semibold sm:size-[132px] print:size-[104px] ${warna.teks} ${warna.bingkai}`}
             aria-label={`Skor risiko ${skor.total}, ${skor.kategori}`}
           >
             <div>
@@ -127,7 +135,7 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
         </header>
 
         <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">
-          {pesisir(input) ? "Jika gempa terasa kuat atau lama di pesisir" : "Saat dan setelah gempa"}
+          {pesisir(input) ? "Saat gempa — rumah dekat pantai" : "Saat dan setelah gempa"}
         </h2>
         <ol className="list-decimal pl-6">
           {rencana.langkah_darurat.map((l, i) => (
@@ -136,6 +144,42 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
             </li>
           ))}
         </ol>
+
+        <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">Tujuan evakuasi</h2>
+        <table className="w-full border-collapse text-[14.5px]">
+          <tbody>
+            <tr className="border-b border-[#cdbf9f]">
+              <th className="w-[45%] py-1.5 pr-2 text-left font-semibold">Lokasi evakuasi resmi (dari BPBD/kelurahan)</th>
+              <td className="py-1.5">…………………………………</td>
+            </tr>
+            <tr className="border-b border-[#cdbf9f]">
+              <th className="py-1.5 pr-2 text-left font-semibold">Titik kumpul keluarga jika terpisah</th>
+              <td className="py-1.5">…………………………………</td>
+            </tr>
+          </tbody>
+        </table>
+        {kandidat.length > 0 && (
+          <>
+            <p className="mt-2 text-[13px] text-[#4a4436] print:mt-1 print:text-[11px]">
+              Kandidat dari peta OpenStreetMap — status evakuasi belum terverifikasi, centang setelah dicek:
+            </p>
+            <table className="w-full border-collapse text-[13.5px] print:!text-[11px]">
+              <tbody>
+                {kandidat.map((t) => (
+                  <tr key={t.id} className="border-b border-[#cdbf9f] align-top">
+                    <td className="w-8 py-1 font-mono">[  ]</td>
+                    <th className="py-1 pr-2 text-left font-semibold">
+                      {t.nama} <span className="font-normal text-[#6a6250]">· {t.jenis}</span>
+                    </th>
+                    <td className="py-1 text-right font-mono sm:whitespace-nowrap print:whitespace-nowrap">
+                      {fmt(t.jarakKm)} km {t.arah.nama} · {fmt(t.elevasiM, 0)} m · ±{t.menit} mnt jalan
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
 
         <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">Tugas tiap anggota</h2>
         <table className="w-full border-collapse text-[14.5px]">
@@ -152,7 +196,7 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
         <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">Isi tas siaga</h2>
         <ul className="columns-1 gap-8 sm:columns-2 print:columns-2">
           {tas.map((x) => (
-            <li key={x.id} className="break-inside-avoid py-0.5">
+            <li key={x.id} className="break-inside-avoid py-0.5 print:py-0">
               <span className="mr-2 font-mono text-[13px]">{centang[x.id] ? "[x]" : "[  ]"}</span>
               {x.barang}
             </li>
@@ -163,8 +207,8 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
         <table className="w-full border-collapse text-[14.5px]">
           <tbody>
             <tr className="border-b border-[#cdbf9f]">
-              <th className="w-[45%] py-1.5 pr-2 text-left font-semibold">Panggilan darurat jika tersedia di daerahmu</th>
-              <td className="py-1.5 font-mono">112</td>
+              <th className="w-[45%] py-1.5 pr-2 text-left font-semibold">Layanan darurat · Ambulans · Pemadam · Polisi</th>
+              <td className="py-1.5 font-mono">112 · 118/119 · 113 · 110</td>
             </tr>
             <tr className="border-b border-[#cdbf9f]">
               <th className="py-1.5 pr-2 text-left font-semibold">BPBD kabupaten/kota</th>
@@ -175,17 +219,13 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
               <td className="py-1.5">…………………………………</td>
             </tr>
             <tr className="border-b border-[#cdbf9f]">
-              <th className="py-1.5 pr-2 text-left font-semibold">Lokasi evakuasi yang dikonfirmasi BPBD</th>
-              <td className="py-1.5">…………………………………</td>
-            </tr>
-            <tr className="border-b border-[#cdbf9f]">
-              <th className="py-1.5 pr-2 text-left font-semibold">Titik kumpul jika terpisah</th>
+              <th className="py-1.5 pr-2 text-left font-semibold">Puskesmas / RS terdekat</th>
               <td className="py-1.5">…………………………………</td>
             </tr>
           </tbody>
         </table>
 
-        <div className="mt-8 grid grid-cols-2 gap-10 text-[13px]">
+        <div className="mt-8 grid grid-cols-2 gap-10 text-[13px] print:mt-6">
           <div className="border-t border-[#1d1b16] pt-1.5">Dibahas bersama keluarga, tanggal</div>
           <div className="border-t border-[#1d1b16] pt-1.5">Latihan evakuasi berikutnya</div>
         </div>
