@@ -36,8 +36,8 @@ export type HasilSkor = { total: number; kategori: Kategori; lengkap: boolean; r
 
 export const LABEL_PANTAI: Record<RentangPantai, string> = {
   lt0_5: "kurang dari 500 m",
-  "0_5_1": "500 m – 1 km",
-  "1_3": "1 – 3 km",
+  "0_5_1": "500 m – kurang dari 1 km",
+  "1_3": "1 – kurang dari 3 km",
   "3_5": "3 – 5 km",
   gt5: "lebih dari 5 km",
 };
@@ -79,7 +79,7 @@ export function rentangPantai(km: number): RentangPantai {
   if (km < 0.5) return "lt0_5";
   if (km < 1) return "0_5_1";
   if (km < 3) return "1_3";
-  if (km < 5) return "3_5";
+  if (km <= 5) return "3_5";
   return "gt5";
 }
 
@@ -122,12 +122,10 @@ export function hitungSkor(input: InputSkor): HasilSkor {
       maks: 30,
       alasan:
         elevasiM === null
-          ? "Data ketinggian tidak tersedia, dianggap rendah agar tetap waspada."
-          : elevasiM < 10
-            ? "Rumah di bawah 10 m sangat rawan terjangkau tsunami."
-            : elevasiM < 30
-              ? "Ketinggian menengah; tsunami besar masih bisa mencapai."
-              : "Di atas 30 m, umumnya di luar jangkauan tsunami.",
+          ? "Data ketinggian belum tersedia. Skor memakai asumsi 25 poin."
+          : elevasiM < 30
+            ? "Elevasi yang lebih rendah menambah poin pada faktor ini."
+            : "Elevasi 30 m ke atas mendapat poin terendah untuk faktor ini.",
     },
     {
       faktor: "Jarak ke pantai",
@@ -135,11 +133,9 @@ export function hitungSkor(input: InputSkor): HasilSkor {
       poin: POIN_PANTAI[jarakPantai],
       maks: 25,
       alasan:
-        POIN_PANTAI[jarakPantai] >= 20
-          ? "Kurang dari 1 km dari pantai: waktu evakuasi sangat singkat."
-          : POIN_PANTAI[jarakPantai] > 0
-            ? "Masih dalam jangkauan genangan tsunami besar."
-            : "Jauh dari pantai, risiko tsunami kecil.",
+        jarakPantai === "gt5"
+          ? "Jarak di atas 5 km mendapat 0 poin pada faktor pantai."
+          : "Jarak yang lebih dekat ke garis pantai menambah poin pada faktor ini.",
     },
     {
       faktor: "Aktivitas gempa",
@@ -148,7 +144,7 @@ export function hitungSkor(input: InputSkor): HasilSkor {
       maks: 15,
       alasan: jumlahGempaDekat === null
         ? "Faktor ini belum masuk dalam skor sementara."
-        : "Dihitung dari 15 gempa M5+ terakhir yang dicatat BMKG.",
+        : "Indikator aktivitas terkini dari 15 gempa M5+ terakhir yang dicatat BMKG.",
     },
     {
       faktor: "Bangunan",
@@ -157,10 +153,10 @@ export function hitungSkor(input: InputSkor): HasilSkor {
       maks: 15,
       alasan:
         bangunan === "beton"
-          ? "Beton bertulang paling tahan guncangan."
+          ? "Jenis bangunan yang dipilih mendapat 3 poin pada faktor ini."
           : lantai > 2
-            ? "Bangunan tinggi tanpa tulangan rawan runtuh saat gempa."
-            : "Tanpa tulangan, dinding mudah retak atau roboh saat gempa kuat.",
+            ? "Pilihan jenis bangunan ini mendapat tambahan 5 poin jika lebih dari 2 lantai."
+            : "Poin mengikuti jenis bangunan yang dipilih pada formulir.",
     },
     {
       faktor: "Kerentanan keluarga",
@@ -171,8 +167,10 @@ export function hitungSkor(input: InputSkor): HasilSkor {
       maks: 10,
       alasan:
         rentan.length > 0
-          ? "Anggota yang perlu dibantu memperlambat evakuasi."
-          : "Semua anggota bisa bergerak sendiri.",
+          ? "Poin mempertimbangkan kategori anggota yang perlu dibantu dan pilihan kendaraan."
+          : kendaraan === "jalan"
+            ? "Pilihan berjalan kaki menambah 1 poin."
+            : "Pilihan pada formulir ini mendapat 0 poin pada faktor keluarga.",
     },
     {
       faktor: "Banjir sungai",
@@ -181,8 +179,8 @@ export function hitungSkor(input: InputSkor): HasilSkor {
       maks: 5,
       alasan:
         POIN_SUNGAI[sungai] > 0
-          ? "Dekat sungai: rawan banjir dan tsunami yang masuk lewat muara."
-          : "Jauh dari sungai.",
+          ? "Jarak yang lebih dekat ke sungai menambah poin pada faktor ini."
+          : "Pilihan ini mendapat 0 poin pada faktor sungai.",
     },
   ];
 

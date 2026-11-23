@@ -56,6 +56,22 @@ describe("pilihTitikAman — tingkat 1 (tempat tinggi)", () => {
     expect(pilihTitikAman([k("jauh", 0.06, 0, 50)], RUMAH, false)).toEqual([]);
   });
 
+  it("tidak memilih titik setinggi atau lebih rendah dari rumah 519 m", () => {
+    const rumah = { ...RUMAH, elevasiM: 519, jarakPantaiKm: 12 };
+    const hasil = pilihTitikAman([
+      k("lebih-rendah", 0.005, 0, 517, 13),
+      k("sama-tinggi", 0.01, 0, 519, 13),
+      k("lebih-tinggi", 0.02, 0, 520, 13),
+    ], rumah, false);
+    expect(hasil.map(({ id, kelas }) => [id, kelas])).toEqual([["lebih-tinggi", "tinggi"]]);
+  });
+
+  it("memakai ambang 30 m jika elevasi rumah belum tersedia", () => {
+    const rumah = { ...RUMAH, elevasiM: null };
+    const hasil = pilihTitikAman([k("di-bawah-ambang", 0.005, 0, 29), k("ambang", 0.01, 0, 30)], rumah, false);
+    expect(hasil.map(({ id }) => id)).toEqual(["ambang"]);
+  });
+
   it("id ganda dibuang", () => {
     expect(pilihTitikAman([k("x", 0.01, 0, 40), k("x", 0.01, 0, 40)], RUMAH, false)).toHaveLength(1);
   });

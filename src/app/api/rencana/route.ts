@@ -38,11 +38,11 @@ export async function POST(request: Request) {
 
   // Feed gempa terbaru dan daftar untuk skor bisa gagal secara terpisah.
   const dataGempa = await ambilGempa().catch(() => null);
-  const gempaDekat = dataGempa?.terkini.length
+  const gempaDekat = dataGempa?.terkiniLengkap
     ? hitungGempaDekat(dataGempa.terkini, input.lokasi, 300)
     : null;
   const skor = hitungSkor(keInputSkor(input, gempaDekat));
-  const lambat = input.kerentanan.lansia || input.kerentanan.disabilitas;
+  const lambat = Object.values(input.kerentanan).some(Boolean);
   const template = rencanaTemplate({ input, skor });
   const [{ titik, sumber: sumberTitik }, ai] = await Promise.all([
     cariTitikAman(lat, lon, input.elevasiM, lambat),

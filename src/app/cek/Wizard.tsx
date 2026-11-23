@@ -38,9 +38,9 @@ const DRAF_KOSONG: Draf = {
 
 const OPSI_PANTAI: Opsi<RentangPantai>[] = [
   { nilai: "lt0_5", label: "Kurang dari 500 m" },
-  { nilai: "0_5_1", label: "500 m – 1 km" },
-  { nilai: "1_3", label: "1 – 3 km" },
-  { nilai: "3_5", label: "3 – 5 km" },
+  { nilai: "0_5_1", label: "500 m hingga kurang dari 1 km" },
+  { nilai: "1_3", label: "1 hingga kurang dari 3 km" },
+  { nilai: "3_5", label: "3–5 km" },
   { nilai: "gt5", label: "Lebih dari 5 km", ket: "atau tidak dekat laut" },
 ];
 const OPSI_SUNGAI: Opsi<RentangSungai>[] = [
@@ -147,16 +147,17 @@ export default function Wizard() {
         setStElevasi(elevasiM === null ? "gagal" : "ok");
       });
 
-      void ambil<{ ok: boolean; jarakKm: number; rentang: RentangPantai }>("pantai").then((r) => {
+      void ambil<{ ok: boolean; jarakKm: number | null; rentang: RentangPantai | null }>("pantai").then((r) => {
         if (!masihAktif()) return;
-        if (!r?.ok) {
+        if (!r?.ok || r.rentang === null) {
           setStPantai("gagal");
           return;
         }
+        const { rentang } = r;
         setDraf((d) => d.lokasi === lokasi ? {
           ...d,
           jarakPantaiKm: r.jarakKm,
-          ...(d.jarakPantai === undefined ? { jarakPantai: r.rentang, pantaiOtomatis: true } : {}),
+          ...(d.jarakPantai === undefined ? { jarakPantai: rentang, pantaiOtomatis: true } : {}),
         } : d);
         setStPantai("ok");
       });
@@ -238,12 +239,14 @@ export default function Wizard() {
       <p className="mb-3 text-sm text-ink-3">Mendeteksi jarak dari peta…</p>
     ) : draf.jarakPantaiKm !== null && draf.pantaiOtomatis ? (
       <p className="mb-3 text-sm text-ink-2">
-        Terdeteksi otomatis dari peta: <b className="font-mono">{fmt(draf.jarakPantaiKm, 2)} km</b>. Ganti jika kurang tepat.
+        Terdeteksi otomatis dari peta: <b className="font-mono">sekitar {fmt(draf.jarakPantaiKm, 2)} km</b>. Ganti jika kurang tepat.
       </p>
     ) : draf.jarakPantaiKm !== null ? (
       <p className="mb-3 text-sm text-ink-3">
         Dari peta: {fmt(draf.jarakPantaiKm, 2)} km. Kamu memilih sendiri.
       </p>
+    ) : stPantai === "ok" ? (
+      <p className="mb-3 text-sm text-ink-3">Garis pantai belum ditemukan dalam radius pencarian 10 km. Ganti jika kurang tepat.</p>
     ) : (
       <p className="mb-3 text-sm text-ink-3">Jarak belum bisa dideteksi otomatis. Pilih perkiraanmu.</p>
     );
@@ -301,7 +304,10 @@ export default function Wizard() {
                 ],
                 [
                   "Ke pantai",
-                  stPantai === "memuat" ? "…" : draf.jarakPantaiKm === null ? "tidak terdeteksi" : `${fmt(draf.jarakPantaiKm, 2)} km`,
+                  stPantai === "memuat" ? "…"
+                    : draf.jarakPantaiKm !== null ? `≈ ${fmt(draf.jarakPantaiKm, 2)} km`
+                    : stPantai === "ok" ? "di luar pencarian"
+                    : "tidak terdeteksi",
                 ],
               ].map(([k, v], i) => (
                 <div key={k} className={`px-3.5 py-3 ${i % 2 ? "border-l border-line" : ""} ${i === 2 ? "border-t border-line sm:border-t-0 sm:border-l" : ""} ${i === 3 ? "border-t border-line sm:border-t-0" : ""}`}>
@@ -313,7 +319,7 @@ export default function Wizard() {
           </div>
           {stElevasi === "gagal" && (
             <p className="mt-3 text-sm text-ink-2">
-              Ketinggian belum bisa dibaca. Kamu tetap bisa lanjut; skor akan menganggap rumah berada di dataran rendah agar tetap waspada.
+              Ketinggian belum bisa dibaca. Kamu tetap bisa lanjut. Kalau nilainya belum tersedia saat dihitung, faktor ini memakai asumsi 25 poin.
             </p>
           )}
 
@@ -347,7 +353,7 @@ export default function Wizard() {
               judul="Seberapa jauh rumah dari pantai?"
               opsi={OPSI_PANTAI}
               nilai={draf.jarakPantai}
-              onUbah={(v) => ubah({ jarakPantai: v, pantaiOtomatis: draf.jarakPantaiKm !== null && v === draf.jarakPantai && draf.pantaiOtomatis })}
+              onUbah={(v) => ubah({ jarakPantai: v, pantaiOtomatis: v === draf.jarakPantai && draf.pantaiOtomatis })}
               galat={draf.jarakPantai ? undefined : galat.pantai}
               catatan={ketPantai}
             />
@@ -451,6 +457,10 @@ export default function Wizard() {
               />
             </fieldset>
 
+            <p className="mb-3 text-sm text-ink-2">
+              Isian dikirim ke SiagaKu saat dihitung. Nama keluarga dan obat rutin boleh dikosongkan.{" "}
+              <Link href="/tentang#privasi" className="underline">Cara isian dipakai</Link>
+            </p>
             {galat.umum && <p role="alert" className="mb-3 font-medium text-risk">{galat.umum}</p>}
             <div className="mt-2 flex flex-wrap justify-between gap-3">
               <button type="button" onClick={() => setLangkah(1)} className={buttonClass("plain", "flex-1 sm:flex-none")}>

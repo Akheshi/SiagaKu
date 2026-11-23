@@ -17,12 +17,12 @@ function statusTsunami(potensi: string): { warna: string; teks: string } {
   return { warna: "bg-ink-3", teks: potensi || "Status tsunami tidak disebutkan" };
 }
 
-function Bingkai({ children }: { children: React.ReactNode }) {
+function Bingkai({ children, judul = "Gempa terbaru" }: { children: React.ReactNode; judul?: string }) {
   return (
     <aside id="gempa" className="scroll-mt-4 border-2 border-ink bg-white" aria-labelledby="judul-gempa">
       <div className="flex items-baseline justify-between border-b border-line px-4 py-3 text-sm">
         <h2 id="judul-gempa" className="text-xl font-semibold">
-          Gempa terbaru
+          {judul}
         </h2>
         <span className="font-mono text-xs text-ink-3">Sumber: BMKG</span>
       </div>
@@ -52,8 +52,12 @@ export async function QuakePanel() {
   if (!g) return <QuakePanelKosong pesan="Belum ada data gempa dari BMKG." />;
 
   const tsunami = statusTsunami(g.potensi);
+  const judul = data.terbaru ? "Gempa terbaru" : "Gempa M5+ terakhir yang tersedia";
+  const deskripsi = data.terkiniLengkap
+    ? "Lingkaran: 15 gempa M5+ terakhir"
+    : `Daftar BMKG belum lengkap (${data.terkini.length} gempa M5+ berhasil dimuat)`;
   return (
-    <Bingkai>
+    <Bingkai judul={judul}>
       <div className="grid grid-cols-[auto_1fr] items-start gap-x-5 gap-y-1 px-4 pt-4 pb-4">
         <p className="font-mono text-[64px] leading-[0.9] font-semibold tracking-tighter">
           {angka(g.magnitudo)}
@@ -79,13 +83,13 @@ export async function QuakePanel() {
         <span className={`size-2.5 flex-none ${tsunami.warna}`} aria-hidden="true" />
         {tsunami.teks}
       </p>
-      <div className="relative z-0 h-[200px] border-t border-line" role="img" aria-label={`Peta pusat gempa terbaru dan ${data.terkini.length} gempa M5+ terakhir`}>
+      <div className="relative z-0 h-[200px] border-t border-line" role="img" aria-label="Peta pusat gempa dari data BMKG">
         <MuatQuakeMap terbaru={g} terkini={data.terkini} />
       </div>
       <p className="border-t border-line px-4 py-2 text-xs text-ink-3">
-        Titik merah besar: gempa terbaru · lingkaran: {data.terkini.length} gempa M5+ terakhir (makin besar makin kuat) · Peta © kontributor OpenStreetMap
+        Titik merah besar: gempa pada panel · {deskripsi} · Peta © kontributor OpenStreetMap
       </p>
-      {g.dirasakan && (
+      {g.dirasakan && g.dirasakan !== "-" && (
         <p className="border-t border-line px-4 py-3 text-sm text-ink-2">
           Dirasakan (skala MMI): <span className="font-mono text-[13px]">{g.dirasakan}</span>
         </p>

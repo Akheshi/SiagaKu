@@ -37,6 +37,11 @@ describe("parseGempa", () => {
     expect(parseGempa({ ...MENTAH, Magnitude: undefined })).toBeNull();
     expect(parseGempa(null)).toBeNull();
   });
+
+  it.each([",106.8", "-3.8,", "91,110", "-7,181", "0,0,0"])(
+    "menolak koordinat tidak lengkap atau di luar rentang (%s)",
+    (Coordinates) => expect(parseGempa({ ...MENTAH, Coordinates })).toBeNull(),
+  );
 });
 
 describe("hitungGempaDekat", () => {

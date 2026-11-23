@@ -51,7 +51,8 @@ describe("rentangPantai", () => {
     [2.9, "1_3"],
     [3, "3_5"],
     [4.99, "3_5"],
-    [5, "gt5"],
+    [5, "3_5"],
+    [5.001, "gt5"],
     [40, "gt5"],
   ])("%s km → %s", (km, rentang) => {
     expect(rentangPantai(km)).toBe(rentang);
@@ -170,5 +171,20 @@ describe("hitungSkor", () => {
       expect(r.nilai.length).toBeGreaterThan(0);
       expect(r.alasan.length).toBeGreaterThan(0);
     }
+  });
+
+  it("memakai asumsi 25 poin secara eksplisit saat elevasi tidak tersedia", () => {
+    const [elevasi] = hitungSkor({ ...CONTOH, elevasiM: null }).rincian;
+    expect(elevasi.poin).toBe(25);
+    expect(elevasi.alasan).toMatch(/belum tersedia.*25 poin/);
+  });
+
+  it("menjelaskan poin tanpa menyatakan batas genangan atau ketahanan bangunan", () => {
+    const { rincian } = hitungSkor({ ...CONTOH, elevasiM: 30, jarakPantai: "gt5", bangunan: "beton" });
+    const [elevasi, pantai, gempa, bangunan] = rincian;
+    expect(elevasi.alasan).toContain("poin");
+    expect(pantai.alasan).toContain("0 poin");
+    expect(gempa.alasan).toContain("aktivitas terkini");
+    expect(bangunan.alasan).toContain("poin");
   });
 });

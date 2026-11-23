@@ -7,7 +7,7 @@ import { parseGempa, type Gempa } from "@/lib/bmkg";
 import { dalamCakupan, jarakKeGarisKm, type Bbox, type Garis } from "@/lib/coast";
 import pantaiBengkulu from "@/data/coastline-bengkulu.json";
 import titikBengkulu from "@/data/titik-bengkulu.json";
-import { haversineKm } from "@/lib/geo";
+import { haversineKm, koordinatValid } from "@/lib/geo";
 import { pilihTitikAman, type Kandidat, type TitikAman } from "@/lib/safePoints";
 
 export const USER_AGENT = "SiagaKu/0.1 (+https://github.com/Akheshi/SiagaKu)";
@@ -23,7 +23,8 @@ async function ambilJson(url: string, ms: number, init?: RequestInit): Promise<u
   return res.json();
 }
 
-export type DataGempa = { terbaru: Gempa | null; terkini: Gempa[]; diambil: string };
+export type DataGempa = { terbaru: Gempa | null; terkini: Gempa[]; terkiniLengkap: boolean; diambil: string };
+const JUMLAH_TERKINI_BMKG = 15;
 
 /** Gempa terbaru (autogempa) + 15 gempa M5+ terakhir (gempaterkini). Cache ±60 dtk. */
 export async function ambilGempa(): Promise<DataGempa> {
@@ -39,20 +40,21 @@ export async function ambilGempa(): Promise<DataGempa> {
   type Bentuk = { Infogempa?: { gempa?: unknown } };
   const terbaru =
     auto.status === "fulfilled"
-      ? parseGempa((auto.value as Bentuk).Infogempa?.gempa as Record<string, unknown>)
+      ? parseGempa((auto.value as Bentuk | null)?.Infogempa?.gempa as Record<string, unknown>)
       : null;
-  const daftar = terkini.status === "fulfilled" ? (terkini.value as Bentuk).Infogempa?.gempa : [];
+  const mentah = terkini.status === "fulfilled" ? (terkini.value as Bentuk | null)?.Infogempa?.gempa : null;
+  const daftar = Array.isArray(mentah) ? mentah : [];
+  const valid = daftar.map((g) => parseGempa(g)).filter((g): g is Gempa => g !== null && g.magnitudo >= 5);
   return {
     terbaru,
-    terkini: (Array.isArray(daftar) ? daftar : [])
-      .map((g) => parseGempa(g))
-      .filter((g): g is Gempa => g !== null),
+    terkini: valid,
+    terkiniLengkap: daftar.length === JUMLAH_TERKINI_BMKG && valid.length === JUMLAH_TERKINI_BMKG,
     diambil: new Date().toISOString(),
   };
 }
 
 /** Ketinggian (m dpl) beberapa titik sekaligus dari Open-Meteo (maks 100). Cache 1 hari. */
-export async function ambilElevasi(titik: { lat: number; lon: number }[]): Promise<number[]> {
+export async function ambilElevasi(titik: { lat: number; lon: number }[]): Promise<(number | null)[]> {
   "use cache";
   cacheLife("days");
   if (titik.length === 0) return [];
@@ -61,31 +63,34 @@ export async function ambilElevasi(titik: { lat: number; lon: number }[]): Promi
   const data = (await ambilJson(
     `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`,
     8000,
-  )) as { elevation?: number[] };
-  if (!Array.isArray(data.elevation) || data.elevation.length !== titik.length) {
+  )) as { elevation?: unknown[] } | null;
+  if (!Array.isArray(data?.elevation) || data.elevation.length !== titik.length) {
     throw new Error("Respons Open-Meteo tidak sesuai");
   }
-  return data.elevation;
+  return data.elevation.map((m) => typeof m === "number" && Number.isFinite(m) ? m : null);
 }
 
 export const OVERPASS = [
   "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
 ];
 
-/** Kirim query Overpass ke server utama lalu cadangan, total dibatasi `ms`. */
+/** Sisakan waktu untuk server cadangan dalam batas total `ms`. */
 export async function overpass(query: string, ms: number): Promise<{ elements: unknown[] }> {
   const batas = Date.now() + ms;
   let galat: unknown;
-  for (const url of OVERPASS) {
+  for (const [i, url] of OVERPASS.entries()) {
     const sisa = batas - Date.now();
     if (sisa < 1500) break;
     try {
-      return (await ambilJson(url, sisa, {
+      const jatah = Math.floor(sisa / (OVERPASS.length - i));
+      const data = await ambilJson(url, jatah, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ data: query }).toString(),
-      })) as { elements: unknown[] };
+      }) as { elements?: unknown[]; remark?: unknown } | null;
+      if (!Array.isArray(data?.elements) || data.remark) throw new Error("Respons Overpass tidak lengkap");
+      return { elements: data.elements };
     } catch (e) {
       galat = e;
     }
@@ -117,7 +122,7 @@ async function kandidatLangsung(lat: number, lon: number): Promise<Kandidat[]> {
   "use cache";
   cacheLife("days");
   const r = RADIUS_TITIK_KM * 1000;
-  const q = `[out:json][timeout:12];(nwr["amenity"~"^(school|college|university|place_of_worship|townhall|hospital|shelter|community_centre)$"](around:${r},${lat},${lon});nwr["emergency"="assembly_point"](around:${r},${lat},${lon});nwr["office"="government"](around:${r},${lat},${lon}););out center tags;`;
+  const q = `[out:json][timeout:7];(nwr["amenity"~"^(school|college|university|place_of_worship|townhall|hospital|shelter|community_centre)$"](around:${r},${lat},${lon});nwr["emergency"="assembly_point"](around:${r},${lat},${lon});nwr["office"="government"](around:${r},${lat},${lon}););out center tags;`;
   const hasil = await overpass(q, 15_000);
   type El = { type: string; id: number; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags?: Record<string, string> };
   const dasar = (hasil.elements as El[])
@@ -127,7 +132,7 @@ async function kandidatLangsung(lat: number, lon: number): Promise<Kandidat[]> {
       const nama = (t.name || "").trim() || (jenis === "Titik kumpul" || jenis === "Shelter" ? jenis : "");
       const la = e.lat ?? e.center?.lat;
       const lo = e.lon ?? e.center?.lon;
-      if (!nama || la == null || lo == null) return null;
+      if (!nama || la == null || lo == null || !koordinatValid(la, lo)) return null;
       return { id: `osm-${e.type[0]}${e.id}`, nama, jenis, lat: la, lon: lo, elevasiM: null as number | null };
     })
     .filter((x): x is Kandidat => x !== null)
@@ -135,6 +140,7 @@ async function kandidatLangsung(lat: number, lon: number): Promise<Kandidat[]> {
     .slice(0, 100);
   if (dasar.length === 0) return [];
   const elev = await ambilElevasi(dasar.map(({ lat: la, lon: lo }) => ({ lat: la, lon: lo })));
+  if (elev.every((m) => m === null)) throw new Error("Elevasi kandidat tidak tersedia");
   return dasar.map((d, i) => ({ ...d, elevasiM: elev[i] }));
 }
 
@@ -161,13 +167,16 @@ export async function cariTitikAman(lat: number, lon: number, elevasiRumah: numb
   }
 }
 
-export type HasilPantai = { jarakKm: number | null; sumber: "bawaan" | "overpass" };
+export type HasilPantai = { sumber: "bawaan" | "overpass" } & (
+  | { jarakKm: number; radiusCariKm: null }
+  | { jarakKm: null; radiusCariKm: number }
+);
 
 const RADIUS_CARI_KM = 10;
 
 /**
  * Jarak ke garis pantai (PRD §7.5): data bawaan Bengkulu → Overpass (radius 10 km).
- * Tidak ada garis pantai dalam 10 km → jarakKm = RADIUS (artinya "lebih dari 5 km").
+ * Jika tidak ada garis pantai dalam 10 km, hanya batas pencarian yang diketahui.
  */
 export async function ambilJarakPantai(lat: number, lon: number): Promise<HasilPantai> {
   "use cache";
@@ -175,17 +184,22 @@ export async function ambilJarakPantai(lat: number, lon: number): Promise<HasilP
   const titik = { lat, lon };
   const data = pantaiBengkulu as unknown as { bbox: Bbox; garis: Garis[] };
 
-  if (dalamCakupan(titik, data.bbox, 0.1)) {
-    const km = jarakKeGarisKm(titik, data.garis);
-    return { jarakKm: km === null ? RADIUS_CARI_KM : Math.min(km, RADIUS_CARI_KM), sumber: "bawaan" };
+  const sumber = dalamCakupan(titik, data.bbox, 0.1) ? "bawaan" : "overpass";
+  let garis = data.garis;
+  if (sumber === "overpass") {
+    const q = `[out:json][timeout:7];way(around:${RADIUS_CARI_KM * 1000},${lat},${lon})["natural"="coastline"];out geom;`;
+    const hasil = await overpass(q, 15_000);
+    type Way = { geometry: { lat: number; lon: number }[] };
+    const ways = hasil.elements as Way[];
+    if (ways.some((w) => !Array.isArray(w?.geometry) || w.geometry.length < 2
+      || w.geometry.some((p) => !koordinatValid(p?.lat, p?.lon)))) {
+      throw new Error("Geometri garis pantai tidak tersedia");
+    }
+    garis = ways.map((w) => w.geometry.map((p) => [p.lon, p.lat]));
   }
 
-  const q = `[out:json][timeout:12];way(around:${RADIUS_CARI_KM * 1000},${lat},${lon})["natural"="coastline"];out geom;`;
-  const hasil = await overpass(q, 15_000);
-  type Way = { geometry?: { lat: number; lon: number }[] };
-  const garis: Garis[] = (hasil.elements as Way[])
-    .filter((w) => (w.geometry?.length ?? 0) > 1)
-    .map((w) => w.geometry!.map((p) => [p.lon, p.lat] as [number, number]));
   const km = jarakKeGarisKm(titik, garis);
-  return { jarakKm: km === null ? RADIUS_CARI_KM : Math.min(km, RADIUS_CARI_KM), sumber: "overpass" };
+  return km === null || km > RADIUS_CARI_KM
+    ? { jarakKm: null, radiusCariKm: RADIUS_CARI_KM, sumber }
+    : { jarakKm: km, radiusCariKm: null, sumber };
 }

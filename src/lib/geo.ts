@@ -2,6 +2,11 @@
 
 export type LatLon = { lat: number; lon: number };
 
+export function koordinatValid(lat: unknown, lon: unknown): boolean {
+  return typeof lat === "number" && lat >= -90 && lat <= 90
+    && typeof lon === "number" && lon >= -180 && lon <= 180;
+}
+
 const R_BUMI_KM = 6371.0088;
 const rad = (d: number) => (d * Math.PI) / 180;
 const deg = (r: number) => (r * 180) / Math.PI;

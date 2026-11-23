@@ -1,5 +1,5 @@
 /** Parser data gempa BMKG (fungsi murni). Sumber: data.bmkg.go.id/DataMKG/TEWS/. */
-import { haversineKm, type LatLon } from "./geo";
+import { haversineKm, koordinatValid, type LatLon } from "./geo";
 
 export type Gempa = {
   waktu: string;
@@ -21,10 +21,13 @@ const teks = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 /** Ubah satu entri BMKG. Data rusak → null (dilewati, bukan error). */
 export function parseGempa(m: Mentah): Gempa | null {
   if (!m || typeof m !== "object") return null;
-  const [lat, lon] = teks(m.Coordinates).split(",").map(Number);
-  const magnitudo = Number.parseFloat(teks(m.Magnitude));
+  const bagian = teks(m.Coordinates).split(",").map((nilai) => nilai.trim());
+  if (bagian.length !== 2 || !bagian.every(Boolean)) return null;
+  const [lat, lon] = bagian.map(Number);
+  const nilaiMagnitudo = teks(m.Magnitude);
+  const magnitudo = nilaiMagnitudo ? Number(nilaiMagnitudo) : NaN;
   const kedalamanKm = Number.parseFloat(teks(m.Kedalaman));
-  if (![lat, lon, magnitudo].every(Number.isFinite)) return null;
+  if (!koordinatValid(lat, lon) || !Number.isFinite(magnitudo)) return null;
 
   const g: Gempa = {
     waktu: teks(m.DateTime),
