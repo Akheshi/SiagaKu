@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const NAV = [
-  { href: "/#gempa", label: "Info gempa", hideOnPhone: true },
+  { href: "/cek", label: "Cek risiko", hideOnPhone: false },
   { href: "/hasil/cetak?contoh=bengkulu", label: "Contoh lembar", hideOnPhone: true },
   { href: "/tentang", label: "Metodologi", hideOnPhone: false },
 ];
