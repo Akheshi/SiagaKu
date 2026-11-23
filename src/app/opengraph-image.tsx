@@ -30,7 +30,7 @@ export default function Image() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ fontSize: 62, fontWeight: 700, lineHeight: 1.1, textTransform: "uppercase", letterSpacing: -1 }}>
-              Gempa kuat datang. Keluargamu lari ke mana?
+              Siapkan rencana keluarga sebelum gempa
             </div>
             <div style={{ fontSize: 30, opacity: 0.92 }}>
               Skor risiko rumah, kandidat lokasi evakuasi, dan lembar rencana keluarga yang bisa dicetak.

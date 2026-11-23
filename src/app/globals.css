@@ -101,10 +101,14 @@
 }
 
 /* Lembar cetak (A4) — DESAIN-UI.md §4.5 */
+.lembar {
+  overflow-wrap: anywhere;
+}
+
 @media print {
   @page {
     size: A4;
-    margin: 12mm 16mm;
+    margin: 10mm 14mm;
   }
   body {
     background: #fff;
@@ -112,39 +116,62 @@
   main {
     padding: 0;
   }
-  /* muat 1 halaman A4 */
   .lembar {
-    font-size: 12px !important;
-    line-height: 1.35 !important;
+    font-size: 10pt;
+    line-height: 1.28;
+  }
+  .lembar header {
+    gap: 14px;
+    padding-bottom: 9px;
+    break-inside: avoid;
+  }
+  .lembar header > [aria-label] {
+    rotate: none;
   }
   .lembar h1 {
-    font-size: 24px !important;
+    font-size: 18pt;
   }
   .lembar h2 {
-    font-size: 14.5px !important;
-    margin-top: 10px !important;
-    margin-bottom: 4px !important;
+    font-size: 12pt;
+    margin-block: 7px 3px;
     break-after: avoid;
   }
-  .lembar table,
-  .lembar ul,
-  .lembar li {
+  .lembar tr,
+  .lembar li,
+  .lembar-tas,
+  .lembar-penutup {
     break-inside: avoid;
   }
   .lembar table {
-    font-size: 12px !important;
+    font-size: inherit;
   }
-  .lembar h2 + ol li { margin: 0 !important; }
-  .lembar header + h2 {
-    margin-top: 10px !important;
+  .lembar h2 + ol li {
+    margin: 0;
   }
-  .lembar footer,
-  .lembar footer + * {
-    margin-top: 14px !important;
+  .lembar-tas li {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+  }
+  .lembar-tas li > span {
+    white-space: nowrap;
+  }
+  .lembar p:has(+ table) {
+    break-after: avoid;
+  }
+  .lembar-penutup > table + div {
+    margin-top: 14px;
+  }
+  .lembar-penutup th {
+    width: 55%;
+  }
+  .lembar-penutup footer {
+    gap: 4px 12px;
+    margin-top: 10px;
+    padding-top: 5px;
+    font-size: 9pt;
   }
   .lembar th,
   .lembar td {
-    padding-top: 2px !important;
-    padding-bottom: 2px !important;
+    padding-block: 1.5px;
   }
 }

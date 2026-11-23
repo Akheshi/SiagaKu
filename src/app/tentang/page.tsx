@@ -17,8 +17,8 @@ export default function Tentang() {
             {/* 1. Rumus skor risiko */}
             <h2 className="mt-14 text-[28px]">Rumus skor risiko</h2>
             <p className="mt-2 max-w-[62ch] text-ink-2">
-                Skor 0–100 dihitung dari enam faktor. Total maksimum 100 poin. Angka yang sama
-                untuk input yang sama, rumusnya terbuka di bawah ini.
+                Enam faktor menyumbang hingga 100 poin. Angka ini membantu menyiapkan rencana keluarga
+                dan bisa berubah ketika data sumber diperbarui.
             </p>
 
             <div className="mt-4 overflow-x-auto" role="region" aria-label="Tabel rumus skor (geser ke samping di layar kecil)" tabIndex={0}>
@@ -39,15 +39,15 @@ export default function Tentang() {
                         <td className="border border-line px-3 py-2">
                             &lt; 5 m: 30
                             <br/>
-                            5–10 m: 25
+                            5 hingga &lt; 10 m: 25
                             <br/>
-                            10–20 m: 18
+                            10 hingga &lt; 20 m: 18
                             <br/>
-                            20–30 m: 10
+                            20 hingga &lt; 30 m: 10
                             <br/>
                             ≥ 30 m: 3
                             <br/>
-                            Tidak terbaca: 25 (dianggap 5–10 m)
+                            Tidak terbaca: asumsi 25 poin
                         </td>
                     </tr>
                     <tr>
@@ -59,9 +59,9 @@ export default function Tentang() {
                         <td className="border border-line px-3 py-2">
                             &lt; 0,5 km: 25
                             <br/>
-                            0,5–1 km: 20
+                            0,5 hingga &lt; 1 km: 20
                             <br/>
-                            1–3 km: 13
+                            1 hingga &lt; 3 km: 13
                             <br/>
                             3–5 km: 6
                             <br/>
@@ -131,12 +131,14 @@ export default function Tentang() {
             </p>
 
             <p className="mt-3 max-w-[62ch] text-ink-2">
-            Jarak ke pantai dihitung otomatis dari garis pantai OpenStreetMap, pengguna bisa
-                mengubahnya kalau kurang tepat. Kalau deteksi gagal, pengguna memilih perkiraan sendiri.
+                Jarak diukur dari garis pantai yang dipetakan OpenStreetMap. Jika pencarian tidak menemukan
+                garis pantai dalam 10 km, sistem memilih rentang lebih dari 5 km tanpa menampilkan angka jarak.
+                Jika layanan gagal, pilih perkiraan sendiri. Batas 5 km hanya dipakai SiagaKu untuk skor dan
+                memilih arahan awal, sehingga peringatan resmi untuk lokasimu tetap perlu diikuti.
             </p>
             <p className="mt-2 max-w-[62ch] text-ink-2">
-                Kalau ketinggian rumah gagal terbaca, rumah dianggap 5–10 m (25 poin): lebih baik
-                waspada daripada meremehkan.
+                Jika daftar 15 gempa belum lengkap, faktor aktivitas gempa ditunda dan skor ditandai sementara.
+                Data ketinggian yang belum tersedia ditandai terpisah, dengan asumsi 25 poin.
             </p>
 
             <h2 className="mt-14 text-[28px]">Cara memilih kandidat lokasi</h2>
@@ -146,9 +148,9 @@ export default function Tentang() {
             </p>
             <ol className="mt-2 list-decimal space-y-2 pl-5">
                 <li>
-                    <strong>Tingkat 1: tempat tinggi.</strong> Ketinggian ≥ 30 m, atau ≥ ketinggian
-                    rumah + 15 m (mana yang lebih rendah), dalam radius 5 km dari rumah. Diurutkan
-                    dari yang terdekat.
+                    <strong>Tingkat 1.</strong> Radius 5 km. Ambangnya adalah nilai terendah di antara
+                    30 m dan ketinggian rumah ditambah 15 m. Kandidat juga harus lebih tinggi dari rumah
+                    jika elevasi rumah diketahui. Jika tidak, ambangnya 30 m.
                 </li>
                 <li>
                     <strong>Tingkat 2: cadangan pemetaan.</strong> Kalau tingkat 1 kurang
@@ -158,7 +160,8 @@ export default function Tentang() {
                 </li>
             </ol>
             <p className="mt-3 max-w-[62ch] text-ink-2">
-                Jika ketinggian atau jarak rumah ke pantai belum diketahui, sistem hanya menampilkan kandidat tingkat 1.
+                Data untuk tingkat 2 tersedia pada wilayah data bawaan Bengkulu. Jarak diurutkan dari garis
+                lurus. Waktu jalan kaki memakai taksiran dari jarak itu dan bisa jauh berbeda dari rute sebenarnya.
             </p>
 
             {/* 3. Temuan */}
@@ -189,10 +192,10 @@ export default function Tentang() {
                 </li>
                 <li>
                     <strong>Open-Meteo</strong>:{" "}
-                    <a className="underline" href="https://open-meteo.com/" target="_blank" rel="noreferrer">
-                    open-meteo.com
+                    <a className="underline" href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">
+                    Elevation API
                     </a>{" "}
-                    (ketinggian lokasi, meter di atas permukaan laut). Lisensi: CC BY 4.0.
+                    (Copernicus DEM GLO-90, resolusi 90 m). Lisensi data: CC BY 4.0.
                 </li>
                 <li>
                     <strong>Overpass (OpenStreetMap)</strong>:{" "}
@@ -224,13 +227,19 @@ export default function Tentang() {
             <h2 className="mt-14 text-[28px]">Batasan</h2>
             <ul className="mt-2 list-disc space-y-2 pl-5">
                 <li>
-                    Skor ini adalah <strong>heuristik indikatif</strong> berbasis faktor yang
-                    dipakai BNPB/InaRISK, <strong>bukan pengganti kajian resmi</strong>{" "}
-                    kerentanan bencana.
+                    <strong>Skor indikatif.</strong> Bobot disusun tim sebagai alat bantu persiapan dan belum
+                    divalidasi di lapangan. Untuk kajian bahaya wilayah, lihat{" "}
+                    <a className="underline" href="https://inarisk.bnpb.go.id/">InaRISK</a> atau hubungi BPBD.
                 </li>
                 <li>
-                    Data gempa hanya 15 kejadian M5+ terakhir dari BMKG; ketinggian berasal
-                    dari model elevasi Open-Meteo. Kelengkapan kandidat lokasi bergantung pada OpenStreetMap.
+                    Lima belas kejadian M5+ terakhir menggambarkan aktivitas terkini dengan rentang waktu yang bisa
+                    berubah. Ketinggian berasal dari model tanah dan kelengkapan kandidat lokasi bergantung pada OpenStreetMap.
+                </li>
+                <li>
+                    Kontak pada lembar cetak mengacu pada{" "}
+                    <a className="underline" href="https://layanan112.komdigi.go.id/tentang">112 (wilayah yang sudah melayani)</a>,{" "}
+                    <a className="underline" href="https://www.kemkes.go.id/id/akses-darurat-medis-119-kini-bisa-melalui-satusehat-mobile">119 (darurat medis)</a>, dan{" "}
+                    <a className="underline" href="https://polri.go.id/kontak/call-center-110">110 (Polri)</a>.
                 </li>
                 <li>
                     Arahan darurat mengacu pada{" "}
@@ -244,15 +253,21 @@ export default function Tentang() {
             <h2 className="mt-14 text-[28px]">Penggunaan AI</h2>
             <ul className="mt-2 list-disc space-y-2 pl-5">
                 <li>
-                    DeepSeek memilih satu tips rumah dan satu peran keluarga untuk ditampilkan lebih dulu.
+                    DeepSeek memilih dua fokus persiapan dari daftar yang sudah disusun SiagaKu.
                 </li>
                 <li>
                     Aplikasi menghitung skor dan menetapkan arahan darurat. Server hanya menerima nomor
                     pilihan yang cocok dengan daftar persiapan yang disediakan aplikasi.
                 </li>
                 <li>
-                    Jika DeepSeek gagal, daftar tampil dalam urutan bawaan.
+                    Jika DeepSeek gagal, aplikasi memilih urutan bawaan dari porsi poin tiap faktor.
                 </li>
+            </ul>
+            <h2 id="privasi" className="mt-14 scroll-mt-4 text-[28px]">Cara isian dipakai</h2>
+            <ul className="mt-2 list-disc space-y-2 pl-5">
+                <li>Isian dan hasil tersimpan di penyimpanan browser. Saat menghitung, formulir dikirim ke server SiagaKu. Aplikasi tidak memiliki akun atau basis data rencana.</li>
+                <li>Koordinat dipakai untuk mengambil data peta dan elevasi. DeepSeek menerima ringkasan kondisi keluarga dan opsi persiapan. Nama keluarga, koordinat persis, dan teks obat rutin tidak ikut dikirim ke DeepSeek.</li>
+                <li>WhatsApp membagikan arahan umum dan tautan situs. Lembar PDF yang kamu simpan sendiri bisa memuat lokasi rumah dan catatan keluarga.</li>
             </ul>
         </article>
     );

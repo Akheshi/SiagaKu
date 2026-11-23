@@ -1,57 +1,36 @@
-/**
- * Tautan rencana yang bisa dibagikan tanpa database: isi formulir dikemas ke parameter `?r=`
- * (JSON → UTF-8 → base64url). Penerima membuka rencana dan lembar cetak dengan data yang sama.
- */
+import { SAAT_GUNCANGAN, setelahGuncangan } from "./arahan";
 import { CONTOH_BENGKULU, InputRencana, type InputRencanaT } from "./input";
 
-function keBase64Url(teks: string): string {
-  let biner = "";
-  for (const b of new TextEncoder().encode(teks)) biner += String.fromCharCode(b);
-  return btoa(biner).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function dariBase64Url(kode: string): string {
-  const b64 = kode.replace(/-/g, "+").replace(/_/g, "/");
-  const biner = atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
-  return new TextDecoder().decode(Uint8Array.from(biner, (c) => c.charCodeAt(0)));
-}
-
-export function kodeRencana(input: InputRencanaT): string {
-  return keBase64Url(JSON.stringify(input));
-}
-
-/** Null jika kode rusak, terlalu panjang, atau isinya tidak lolos skema formulir. */
-export function bacaKodeRencana(kode: string | null): InputRencanaT | null {
-  if (!kode || kode.length > 2000) return null;
-  try {
-    const cek = InputRencana.safeParse(JSON.parse(dariBase64Url(kode)));
-    return cek.success ? cek.data : null;
-  } catch {
-    return null;
-  }
-}
-
-export type ModeRencana =
-  | { jenis: "pribadi" }
-  | { jenis: "contoh" }
-  | { jenis: "bagikan"; kode: string; input: InputRencanaT };
+export type ModeAktif = { jenis: "pribadi" } | { jenis: "contoh" };
+export type ModeRencana = ModeAktif | { jenis: "tautan-lama" };
 
 export function modeDariUrl(p: { get(nama: string): string | null }): ModeRencana {
-  if (p.get("contoh") === "bengkulu") return { jenis: "contoh" };
-  const kode = p.get("r");
-  const input = bacaKodeRencana(kode);
-  return input && kode ? { jenis: "bagikan", kode, input } : { jenis: "pribadi" };
+  if (p.get("r") !== null || p.get("tautan") === "lama") return { jenis: "tautan-lama" };
+  return p.get("contoh") === "bengkulu" ? { jenis: "contoh" } : { jenis: "pribadi" };
 }
 
-/** Query string yang mempertahankan mode saat pindah antara /hasil dan /hasil/cetak. */
-export function qsMode(m: ModeRencana): string {
-  return m.jenis === "contoh" ? "?contoh=bengkulu" : m.jenis === "bagikan" ? `?r=${m.kode}` : "";
+export function qsMode(m: ModeAktif): string {
+  return m.jenis === "contoh" ? "?contoh=bengkulu" : "";
 }
 
-/** Input untuk mode ini; mode pribadi membaca dari penyimpanan lewat `bacaPribadi`. */
 export function inputMode(m: ModeRencana, bacaPribadi: () => unknown): InputRencanaT | null {
+  if (m.jenis === "tautan-lama") return null;
   if (m.jenis === "contoh") return CONTOH_BENGKULU;
-  if (m.jenis === "bagikan") return m.input;
   const cek = InputRencana.safeParse(bacaPribadi());
   return cek.success ? cek.data : null;
+}
+
+export function teksBagikan(mode: ModeAktif, asal: string): string {
+  const demo = mode.jenis === "contoh";
+  return [
+    demo ? "*Contoh rencana siaga Kota Bengkulu*" : "*Ringkasan siaga keluarga*",
+    "",
+    `*Saat guncangan:* ${SAAT_GUNCANGAN}`,
+    `${setelahGuncangan(true)} Di lokasi lain, ikuti arahan resmi yang berlaku di tempatmu.`,
+    "",
+    "Sebelum gempa, sepakati titik kumpul dan siapa yang bisa mendampingi anggota keluarga yang perlu bantuan.",
+    "",
+    demo ? "Buka contoh SiagaKu:" : "Buat rencana keluargamu di SiagaKu:",
+    demo ? `${asal}/hasil${qsMode(mode)}` : `${asal}/`,
+  ].join("\n");
 }

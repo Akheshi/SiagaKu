@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SAAT_GUNCANGAN, setelahGuncangan } from "../arahan";
 import { CONTOH_BENGKULU } from "../input";
 import { opsiFokus, periksaRencanaAI, rencanaTemplate, RencanaSchema, tasDasar, tasTambahanDasar } from "../rencana";
 import { hitungSkor, keInputSkorDummy } from "./helper";
@@ -7,8 +8,11 @@ const input = CONTOH_BENGKULU;
 const skor = hitungSkor(keInputSkorDummy(input));
 
 describe("tasDasar", () => {
-  it("air menyesuaikan jumlah penghuni", () => {
-    expect(tasDasar(5)[0].barang).toBe("Air minum 15 liter");
+  it.each([5, 30])("air untuk %i penghuni disiapkan dalam botol yang sanggup dibawa", (penghuni) => {
+    const air = tasDasar(penghuni).find((item) => item.id === "air");
+    expect(air?.barang).toBe("Air minum dalam botol");
+    expect(air?.ket).toContain("sesuai kemampuan membawa");
+    expect(air?.ket).not.toContain("liter");
   });
 });
 
@@ -16,8 +20,9 @@ describe("tasTambahanDasar", () => {
   it("menambah obat, kebutuhan lansia & balita", () => {
     const t = tasTambahanDasar(input).map((x) => x.barang);
     expect(t[0]).toContain("Obat darah tinggi");
-    expect(t.some((b) => b.includes("Tongkat"))).toBe(true);
+    expect(t.some((b) => b.includes("Alat bantu lansia"))).toBe(true);
     expect(t.some((b) => b.includes("Popok"))).toBe(true);
+    expect(t.every((b) => !/\d+ hari/.test(b))).toBe(true);
   });
   it("keluarga tanpa kerentanan & obat → kosong", () => {
     expect(
@@ -30,24 +35,47 @@ describe("rencanaTemplate", () => {
   it("tetap valid dan tidak menjadikan kandidat OSM sebagai tujuan", () => {
     const r = rencanaTemplate({ input, skor });
     expect(RencanaSchema.safeParse(r).success).toBe(true);
-    expect(r.titik_tujuan_id).toBeNull();
+    expect(r).not.toHaveProperty("titik_tujuan_id");
     expect(r.rute_narasi).toContain("evakuasi resmi");
-    expect(r.langkah_darurat).toContain(r.rute_narasi);
+    expect(r.langkah_darurat.slice(0, 2)).toEqual([SAAT_GUNCANGAN, setelahGuncangan(true)]);
+    expect(r.rute_narasi).toBe(setelahGuncangan(true));
     expect(r.rute_narasi).toContain("kuat atau lama");
   });
 
   it("menerima catatan obat sepanjang batas isian formulir", () => {
     const r = rencanaTemplate({ input: { ...input, obat: "x".repeat(200) }, skor });
     expect(RencanaSchema.safeParse(r).success).toBe(true);
-    expect(r.titik_tujuan_id).toBeNull();
-    expect(r.rute_narasi).toContain("tempat yang lebih tinggi");
+    expect(r.rute_narasi).toContain("tempat lebih tinggi");
+  });
+
+  it("dua penghuni termasuk balita dapat menugaskan orang dewasa yang sama", () => {
+    const keluarga = { ...input, penghuni: 2, kerentanan: { lansia: false, balita: true, hamil: false, disabilitas: false } };
+    const r = rencanaTemplate({ input: keluarga, skor });
+    expect(r.peran_anggota.map((peran) => peran.siapa)).toEqual(["Pemandu evakuasi", "Bantuan evakuasi"]);
+    expect(r.peran_anggota[1].tugas).toContain("Orang dewasa yang sama boleh merangkap");
+    expect(r.peran_anggota[1].tugas).toContain("balita");
+  });
+
+  it("penghuni disabilitas yang tinggal sendiri mengatur bantuan bila perlu", () => {
+    const keluarga = { ...input, penghuni: 1, kerentanan: { lansia: false, balita: false, hamil: false, disabilitas: true } };
+    const r = rencanaTemplate({ input: keluarga, skor });
+    expect(r.peran_anggota.map((peran) => peran.siapa)).toEqual(["Rencana evakuasi", "Bantuan evakuasi"]);
+    expect(r.peran_anggota[1].tugas).toContain("sepakati bantuan dengan tetangga");
+    expect(r.peran_anggota[1].tugas).toContain("alat bantu");
+  });
+
+  it("tetap valid ketika semua kebutuhan dicentang tanpa mengetahui jumlah pendamping", () => {
+    const keluarga = { ...input, penghuni: 2, kerentanan: { lansia: true, balita: true, hamil: true, disabilitas: true } };
+    const r = rencanaTemplate({ input: keluarga, skor });
+    expect(RencanaSchema.safeParse(r).success).toBe(true);
+    expect(r.peran_anggota.every(({ siapa }) => !siapa.startsWith("Pendamping"))).toBe(true);
   });
 
   it("rumah jauh dari pantai tidak disuruh lari dari tsunami", () => {
     const r = rencanaTemplate({ input: { ...input, jarakPantai: "gt5" }, skor });
-    expect(r.langkah_darurat).toContain(r.rute_narasi);
-    expect(r.rute_narasi).toContain("ruang terbuka");
-    expect(r.rute_narasi).not.toContain("pantai");
+    expect(r.langkah_darurat.slice(0, 2)).toEqual([SAAT_GUNCANGAN, setelahGuncangan(false)]);
+    expect(r.rute_narasi).toBe(setelahGuncangan(false));
+    expect(r.rute_narasi).toContain("tempat terbuka");
   });
 });
 

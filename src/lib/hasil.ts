@@ -1,5 +1,5 @@
 /** Bentuk respons POST /api/rencana — dipakai halaman hasil & lembar cetak. */
-import type { ModeRencana } from "./bagikan";
+import type { ModeAktif } from "./bagikan";
 import type { InputRencanaT } from "./input";
 import type { ItemTas, Rencana } from "./rencana";
 import type { TitikAman } from "./safePoints";
@@ -21,16 +21,10 @@ export type HasilRencana = {
 
 /** Hasil terakhir disimpan agar muat ulang tidak memanggil AI lagi (PRD F14). */
 // Buat ulang hasil lama agar arahan sebelumnya tidak ditampilkan atau dicetak.
-// Rencana kiriman orang lain disimpan terpisah agar tidak menimpa rencana pribadi.
-export function kunciPenyimpananRencana(mode: ModeRencana) {
-  switch (mode.jenis) {
-    case "contoh":
-      return { hasil: "siagaku:hasil:contoh:v5", tas: "siagaku:tas:contoh" };
-    case "bagikan":
-      return { hasil: "siagaku:hasil:bagikan:v5", tas: `siagaku:tas:bagikan:${mode.kode.slice(-24)}` };
-    default:
-      return { hasil: "siagaku:hasil:v5", tas: "siagaku:tas" };
-  }
+export function kunciPenyimpananRencana(mode: ModeAktif) {
+  return mode.jenis === "contoh"
+    ? { hasil: "siagaku:hasil:contoh:v6", tas: "siagaku:tas:contoh" }
+    : { hasil: "siagaku:hasil:v6", tas: "siagaku:tas" };
 }
 
 export function kunciInput(i: InputRencanaT): string {
@@ -55,4 +49,4 @@ export function warnaKategori(k: HasilSkor["kategori"]) {
   }
 }
 
-export const pesisir = (i: InputRencanaT) => i.jarakPantai !== "gt5";
+export const pesisir = (i: Pick<InputRencanaT, "jarakPantai">) => i.jarakPantai !== "gt5";

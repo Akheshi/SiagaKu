@@ -10,7 +10,7 @@ export function SiteHeader() {
   return (
     <header className="border-b-[3px] border-ink bg-white print:hidden">
       <div className="mx-auto flex h-[60px] max-w-[1200px] items-center justify-between gap-4 px-4">
-        <Link href="/" className="flex items-center gap-2.5" aria-label="SiagaKu, beranda">
+        <Link href="/" className="flex min-h-11 items-center gap-2.5" aria-label="SiagaKu, beranda">
           <span className="grid size-[34px] place-items-center bg-sign" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 20 20">
               <path
@@ -29,8 +29,8 @@ export function SiteHeader() {
             <Link
               key={item.href}
               href={item.href}
-              className={`border-b-2 border-transparent py-2 hover:border-ink ${
-                item.hideOnPhone ? "hidden sm:inline" : ""
+              className={`min-h-11 items-center border-b-2 border-transparent py-2 hover:border-ink ${
+                item.hideOnPhone ? "hidden sm:inline-flex" : "inline-flex"
               }`}
             >
               {item.label}

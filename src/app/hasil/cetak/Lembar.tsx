@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { buttonClass } from "@/components/ButtonLink";
+import TautanRencanaLama from "@/components/TautanRencanaLama";
 import { fmt, KETERANGAN_SKOR_SEMENTARA, kunciInput, kunciPenyimpananRencana, pesisir, warnaKategori, type HasilRencana } from "@/lib/hasil";
-import { inputMode, modeDariUrl, qsMode, type ModeRencana } from "@/lib/bagikan";
+import { inputMode, modeDariUrl, qsMode, type ModeAktif } from "@/lib/bagikan";
 import { KUNCI_INPUT, type InputRencanaT } from "@/lib/input";
+import { CATATAN_CADANGAN } from "@/lib/rencana";
 
 function baca<T>(k: string): T | null {
   try {
@@ -32,7 +34,7 @@ type Keadaan =
   | { tahap: "galat"; input: InputRencanaT }
   | { tahap: "siap"; data: HasilRencana };
 
-function awal(mode: ModeRencana, kunciHasil: string): Keadaan {
+function awal(mode: ModeAktif, kunciHasil: string): Keadaan {
   const input = inputMode(mode, () => baca(KUNCI_INPUT));
   if (!input) return { tahap: "kosong" };
 
@@ -42,13 +44,12 @@ function awal(mode: ModeRencana, kunciHasil: string): Keadaan {
     : { tahap: "memuat", input };
 }
 
-/** Kerangka lembar selama rencana disusun ulang (mis. tautan kiriman yang baru dibuka). */
+/** Kerangka lembar selama rencana disusun ulang. */
 function MemuatLembar() {
   const baris = "h-3 bg-[#e4dac2] motion-safe:animate-pulse";
   return (
     <div className="px-4 py-8" role="status" aria-live="polite">
       <div className="mx-auto mb-4 max-w-[820px]">
-        <p className="font-mono text-sm text-ink-3">Biasanya 5–20 detik</p>
         <h1 className="mt-1 text-[clamp(28px,3.6vw,40px)]">Menyusun lembar rencana keluarga…</h1>
         <p className="mt-1 text-ink-2">Menghitung skor, mencari kandidat lokasi di sekitar rumah, dan memilih fokus persiapan.</p>
       </div>
@@ -76,10 +77,11 @@ function MemuatLembar() {
 
 export default function Lembar() {
   const mode = modeDariUrl(useSearchParams());
-  return <IsiLembar key={`${mode.jenis}${qsMode(mode)}`} mode={mode} />;
+  if (mode.jenis === "tautan-lama") return <TautanRencanaLama />;
+  return <IsiLembar key={mode.jenis} mode={mode} />;
 }
 
-function IsiLembar({ mode }: { mode: ModeRencana }) {
+function IsiLembar({ mode }: { mode: ModeAktif }) {
   const contoh = mode.jenis === "contoh";
   const { hasil: kunciHasil, tas: kunciTas } = kunciPenyimpananRencana(mode);
   const [k, setK] = useState<Keadaan>(() => awal(mode, kunciHasil));
@@ -148,7 +150,9 @@ function IsiLembar({ mode }: { mode: ModeRencana }) {
     ...rencana.tas_siaga_tambahan.map((t, i) => ({ id: `t${i}-${t.barang}`, barang: t.barang })),
   ];
   const warna = skor.lengkap ? warnaKategori(skor.kategori) : { teks: "text-ink", bingkai: "border-ink" };
-  const tanggal = new Date(d.dibuat).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  const tanggal = new Date(d.dibuat).toLocaleDateString("id-ID", {
+    day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta",
+  });
   const kandidat = d.titik.slice(0, 3);
   const judul = contoh ? "Contoh — Kota Bengkulu" : input.namaKeluarga ? `Keluarga ${input.namaKeluarga}` : "Keluarga kami";
 
@@ -162,6 +166,11 @@ function IsiLembar({ mode }: { mode: ModeRencana }) {
           Cetak / simpan PDF
         </button>
       </div>
+      {!contoh && (
+        <p className="mx-auto mb-4 max-w-[820px] text-sm text-ink-2 print:hidden">
+          Lembar lengkap bisa memuat lokasi rumah dan catatan keluarga. Bagikan PDF hanya kepada orang yang kamu percaya.
+        </p>
+      )}
 
       <article className="lembar mx-auto max-w-[820px] border border-[#d8cdb4] bg-paper px-5 py-7 font-serif text-[15.5px] leading-[1.7] text-[#1d1b16] shadow-[0_2px_0_#d8cdb4] sm:px-16 sm:py-14 print:max-w-none print:border-0 print:bg-white print:p-0 print:shadow-none">
         <header className="grid grid-cols-[minmax(0,1fr)_auto] gap-6 border-b-2 border-[#1d1b16] pb-4">
@@ -187,6 +196,9 @@ function IsiLembar({ mode }: { mode: ModeRencana }) {
           </div>
         </header>
         {!skor.lengkap && <p className="mt-2 text-sm font-semibold print:mt-1 print:text-[11px]">{KETERANGAN_SKOR_SEMENTARA}</p>}
+        {input.elevasiM === null && (
+          <p className="mt-2 text-sm print:mt-1 print:text-[11px]">Ketinggian belum tersedia. Faktor ini memakai asumsi 25 poin.</p>
+        )}
 
         <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">
           {pesisir(input) ? "Saat gempa — rumah dekat pantai" : "Saat dan setelah gempa"}
@@ -228,7 +240,8 @@ function IsiLembar({ mode }: { mode: ModeRencana }) {
         {kandidat.length > 0 && (
           <>
             <p className="mt-2 text-[13px] text-[#4a4436] print:mt-1 print:text-[11px]">
-              Kandidat dari peta OpenStreetMap — status evakuasi belum terverifikasi, centang setelah dicek:
+              Kandidat OpenStreetMap. Konfirmasi status, akses, dan rute ke BPBD sebelum mencentang.
+              Jarak dan waktu di bawah ini ditaksir dari garis lurus.
             </p>
             <table className="w-full border-collapse text-[13.5px] print:!text-[11px]">
               <tbody>
@@ -261,7 +274,7 @@ function IsiLembar({ mode }: { mode: ModeRencana }) {
         </table>
 
         <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">Isi tas siaga</h2>
-        <ul className="columns-1 gap-8 sm:columns-2 print:columns-2">
+        <ul className="lembar-tas columns-1 gap-8 sm:columns-2 print:columns-2">
           {tas.map((x) => (
             <li key={x.id} className="break-inside-avoid py-0.5 print:py-0">
               <span className="mr-2 font-mono text-[13px]">{centang[x.id] ? "[x]" : "[  ]"}</span>
@@ -269,16 +282,18 @@ function IsiLembar({ mode }: { mode: ModeRencana }) {
             </li>
           ))}
         </ul>
+        <p className="mt-2 text-[13px] text-[#4a4436] print:mt-1 print:text-[11px]">{CATATAN_CADANGAN}</p>
 
+        <section className="lembar-penutup">
         <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">Kontak darurat</h2>
         <table className="w-full border-collapse text-[14.5px]">
           <tbody>
             <tr className="border-b border-[#cdbf9f]">
-              <th className="w-[45%] py-1.5 pr-2 text-left font-semibold">Layanan darurat · Ambulans · Pemadam · Polisi</th>
-              <td className="py-1.5 font-mono">112 · 118/119 · 113 · 110</td>
+              <th className="w-[45%] py-1.5 pr-2 text-left font-semibold">Darurat daerah (jika aktif) · Darurat medis · Polisi</th>
+              <td className="py-1.5 font-mono">112 · 119 · 110</td>
             </tr>
             <tr className="border-b border-[#cdbf9f]">
-              <th className="py-1.5 pr-2 text-left font-semibold">BPBD kabupaten/kota</th>
+              <th className="py-1.5 pr-2 text-left font-semibold">BPBD / pemadam kabupaten atau kota</th>
               <td className="py-1.5">…………………………………</td>
             </tr>
             <tr className="border-b border-[#cdbf9f]">
@@ -298,9 +313,10 @@ function IsiLembar({ mode }: { mode: ModeRencana }) {
         </div>
 
         <footer className="mt-8 flex flex-wrap justify-between gap-4 border-t border-[#1d1b16] pt-3 text-[12.5px] text-[#6a6250]">
-          <span>Dibuat dengan SiagaKu · skor indikatif, bukan kajian resmi</span>
+          <span>SiagaKu · lembar persiapan keluarga · skor indikatif</span>
           <span>Data: BMKG, OpenStreetMap, Open-Meteo</span>
         </footer>
+        </section>
       </article>
     </div>
   );

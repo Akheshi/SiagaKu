@@ -3,6 +3,7 @@
  * Semua fungsi murni — dipakai server (fallback) dan diuji unit.
  */
 import { z } from "zod";
+import { SAAT_GUNCANGAN, setelahGuncangan } from "./arahan";
 import { pesisir } from "./hasil";
 import type { InputRencanaT } from "./input";
 import type { HasilSkor } from "./score";
@@ -13,7 +14,6 @@ export const RencanaSchema = z.object({
   fokus: z.array(z.object({ faktor: teks(40), nilai: teks(120), tindakan: teks(240) })).max(2),
   langkah_darurat: z.array(teks(300)).min(3).max(7),
   peran_anggota: z.array(z.object({ siapa: teks(40), tugas: teks(240) })).min(1).max(8),
-  titik_tujuan_id: z.string().nullable(),
   rute_narasi: teks(500),
   tas_siaga_tambahan: z.array(z.object({ barang: teks(213), alasan: teks(160) })).max(8),
   tips_rumah: z.array(teks(240)).max(5),
@@ -25,11 +25,17 @@ type Konteks = { input: InputRencanaT; skor: HasilSkor };
 
 export type ItemTas = { id: string; barang: string; ket?: string; untuk?: string };
 
-/** Isi dasar tas siaga (mengacu panduan umum BNPB), disesuaikan jumlah penghuni. */
+export const CATATAN_CADANGAN = "Simpan cadangan air dan makanan untuk seluruh penghuni secara terpisah di rumah.";
+
+/** Perlengkapan portabel mengacu Kebutuhan Dasar Tas Siaga Bencana, Buku Saku BNPB. */
 export function tasDasar(penghuni: number): ItemTas[] {
   return [
-    { id: "air", barang: `Air minum ${penghuni * 3} liter`, ket: "3 liter per orang untuk 1 hari pertama" },
-    { id: "makanan", barang: "Makanan siap santap untuk 3 hari", ket: "biskuit, roti kering, makanan kaleng" },
+    {
+      id: "air",
+      barang: "Air minum dalam botol",
+      ket: penghuni > 1 ? "Bagi sesuai kemampuan membawa tiap orang." : "Isi sesuai kemampuan membawa.",
+    },
+    { id: "makanan", barang: "Makanan siap santap yang ringan dan tahan lama", ket: "misalnya biskuit atau roti kering" },
     { id: "senter", barang: "Senter dan baterai cadangan" },
     { id: "dokumen", barang: "Fotokopi KTP, KK, dan surat penting", ket: "simpan dalam plastik kedap air" },
     { id: "p3k", barang: "Kotak P3K dan obat-obatan umum" },
@@ -44,15 +50,14 @@ export function tasDasar(penghuni: number): ItemTas[] {
 /** Tambahan tas siaga sesuai kondisi keluarga (dipakai juga untuk melengkapi hasil AI). */
 export function tasTambahanDasar(i: InputRencanaT): Rencana["tas_siaga_tambahan"] {
   const t: Rencana["tas_siaga_tambahan"] = [];
-  if (i.obat.trim()) t.push({ barang: `${i.obat.trim()} untuk 7 hari`, alasan: "Obat rutin tidak boleh terputus selama mengungsi." });
-  if (i.kerentanan.lansia) t.push({ barang: "Tongkat lipat dan alas kaki tertutup", alasan: "Membantu lansia berjalan di jalan yang rusak." });
+  if (i.obat.trim()) t.push({ barang: i.obat.trim(), alasan: "Siapkan cadangan sesuai petunjuk tenaga kesehatan. Sertakan catatan cara pakainya." });
+  if (i.kerentanan.lansia) t.push({ barang: "Alat bantu lansia yang biasa dipakai", alasan: "Siapkan alat seperti tongkat atau kacamata di tempat yang mudah dijangkau." });
   if (i.kerentanan.balita) {
-    t.push({ barang: "Popok dan susu untuk 3 hari", alasan: "Kebutuhan balita sulit didapat di pengungsian." });
-    t.push({ barang: "Gendongan bayi", alasan: "Tangan tetap bebas saat berjalan cepat." });
+    t.push({ barang: "Popok dan bekal balita sesuai kebutuhan", alasan: "Siapkan perlengkapan balita yang biasa dipakai, termasuk gendongan bila sesuai." });
   }
-  if (i.kerentanan.hamil) t.push({ barang: "Buku KIA dan vitamin kehamilan", alasan: "Catatan kesehatan dibutuhkan bila harus ke fasilitas kesehatan." });
-  if (i.kerentanan.disabilitas) t.push({ barang: "Alat bantu cadangan (kacamata, alat dengar, kursi roda lipat)", alasan: "Alat bantu sering tertinggal saat panik." });
-  return t.slice(0, 8);
+  if (i.kerentanan.hamil) t.push({ barang: "Buku KIA dan perlengkapan kehamilan pribadi", alasan: "Buku KIA membantu petugas mengetahui riwayat kehamilan." });
+  if (i.kerentanan.disabilitas) t.push({ barang: "Alat bantu yang biasa dipakai dan perlengkapannya", alasan: "Siapkan alat bantu dan komponen yang diperlukan, misalnya baterai alat dengar." });
+  return t;
 }
 
 export type OpsiFokus = Rencana["fokus"][number];
@@ -72,8 +77,9 @@ export function opsiFokus({ input, skor }: Konteks): OpsiFokus[] {
       "Latih evakuasi ke tempat tinggi bersama keluarga dan catat waktunya; begitu gempa kuat atau lama mereda, langsung berangkat.",
     "Aktivitas gempa": "Taruh tas siaga di dekat pintu keluar dan sepakati satu titik kumpul jika keluarga terpisah.",
     Bangunan: "Periksa dinding yang retak, ikat lemari tinggi ke dinding, dan pertimbangkan perkuatan kolom saat renovasi.",
-    "Kerentanan keluarga":
-      "Tentukan siapa yang mendampingi anggota yang perlu dibantu, dan simpan obat serta alat bantunya di tas siaga.",
+    "Kerentanan keluarga": Object.values(input.kerentanan).some(Boolean)
+      ? "Sepakati bantuan sebelum darurat dan siapkan obat serta alat bantu yang biasa dipakai agar mudah dijangkau."
+      : "Latih jalur evakuasi dengan berjalan kaki dan sepakati titik kumpul di tempat yang ditetapkan petugas.",
     "Banjir sungai": "Simpan dokumen penting di tempat tinggi dan pantau peringatan banjir dari BPBD.",
   };
   return [...skor.rincian]
@@ -84,37 +90,42 @@ export function opsiFokus({ input, skor }: Konteks): OpsiFokus[] {
 
 /** Skor, arahan darurat, dan teks persiapan selalu dibentuk oleh aplikasi. */
 export function rencanaTemplate({ input, skor }: Konteks): Rencana {
-  const lambat = input.kerentanan.lansia || input.kerentanan.disabilitas || input.kerentanan.balita;
-
-
-  const rute_narasi = pesisir(input)
-    ? "Jika gempa terasa kuat atau lama di pesisir, segera evakuasi setelah guncangan mereda. Ikuti rambu evakuasi resmi menuju tempat yang lebih tinggi. Jauhi pantai dan tepi sungai. Jangan tunggu sirene."
-    : "Setelah guncangan mereda, menuju ruang terbuka terdekat yang jauh dari bangunan, tiang listrik, dan kabel. Ikuti arahan petugas setempat.";
-  const langkah_darurat = pesisir(input)
+  const dekatPantai = pesisir(input);
+  const rute_narasi = setelahGuncangan(dekatPantai);
+  const langkah_darurat = dekatPantai
     ? [
-        "Saat guncangan: lindungi kepala, berlindung di bawah meja yang kokoh, jauhi kaca dan lemari tinggi.",
+        SAAT_GUNCANGAN,
         rute_narasi,
-        lambat
-          ? "Bantu anggota yang lebih lambat sejak awal; jangan berpencar."
-          : "Tetap bersama keluarga; jangan kembali mengambil barang.",
-        "Bertahan di tempat tinggi sampai BMKG atau BPBD menyatakan aman.",
+        "Jangan kembali mengambil barang.",
+        "Jika evakuasi tsunami, bertahan di tempat tinggi sampai BMKG atau BPBD menyatakan aman.",
       ]
     : [
-        "Saat guncangan: lindungi kepala, berlindung di bawah meja yang kokoh, jauhi kaca dan lemari tinggi.",
+        SAAT_GUNCANGAN,
         rute_narasi,
-        "Periksa anggota keluarga yang terluka; matikan kompor dan listrik bila aman.",
+        "Di titik kumpul, periksa apakah ada anggota keluarga yang terluka.",
         "Waspadai gempa susulan; jangan masuk kembali ke bangunan yang retak.",
         "Ikuti informasi resmi BMKG dan BPBD.",
       ];
 
+  const sendiri = input.penghuni === 1;
+  const ambilTas = "Bawa tas siaga jika terjangkau dan tidak menunda evakuasi.";
   const peran_anggota: Rencana["peran_anggota"] = [
-    { siapa: "Orang dewasa pertama", tugas: "Pandu keluarga keluar. Bawa tas siaga jika sudah terjangkau dan tidak menunda evakuasi." },
+    sendiri
+      ? { siapa: "Rencana evakuasi", tugas: `Kenali jalur yang bisa kamu lalui. ${ambilTas}` }
+      : { siapa: "Pemandu evakuasi", tugas: `Tentukan orang dewasa yang tersedia untuk memandu. ${ambilTas}` },
   ];
-  if (input.kerentanan.balita) peran_anggota.push({ siapa: "Orang dewasa kedua", tugas: "Menggendong balita dengan gendongan agar tangan tetap bebas." });
-  if (input.kerentanan.lansia) peran_anggota.push({ siapa: "Pendamping lansia", tugas: "Menuntun lansia sejak awal dan membawa obat rutinnya." });
-  if (input.kerentanan.hamil) peran_anggota.push({ siapa: "Ibu hamil", tugas: "Berjalan bersama pendamping, tidak membawa beban berat." });
-  if (input.kerentanan.disabilitas) peran_anggota.push({ siapa: "Pendamping disabilitas", tugas: "Membantu anggota disabilitas beserta alat bantunya." });
-  if (input.penghuni > peran_anggota.length) peran_anggota.push({ siapa: "Anggota lainnya", tugas: "Membawa air dan senter, berjalan di belakang agar tidak ada yang tertinggal." });
+  const { balita, lansia, hamil, disabilitas } = input.kerentanan;
+  const kelompok = [balita && "balita", lansia && "lansia", hamil && "ibu hamil", disabilitas && "anggota disabilitas"]
+    .filter((anggota) => anggota !== false);
+  if (kelompok.length) {
+    const yangDibantu = new Intl.ListFormat("id").format(kelompok);
+    peran_anggota.push({
+      siapa: "Bantuan evakuasi",
+      tugas: sendiri
+        ? "Jika perlu pendamping atau alat bantu, sepakati bantuan dengan tetangga sebelum darurat. Coba jalur evakuasi bersama."
+        : `Orang dewasa yang sama boleh merangkap. Dampingi ${yangDibantu} sesuai kebutuhan. Jika perlu bantuan tambahan, sepakati dengan tetangga sebelum darurat.`,
+    });
+  }
 
   const tips_rumah: string[] = [];
   if (input.bangunan !== "beton") tips_rumah.push("Periksa dinding yang retak dan pertimbangkan perkuatan kolom saat renovasi.");
@@ -125,8 +136,7 @@ export function rencanaTemplate({ input, skor }: Konteks): Rencana {
   return {
     fokus: opsiFokus({ input, skor }).slice(0, 2),
     langkah_darurat,
-    peran_anggota: peran_anggota.slice(0, 8),
-    titik_tujuan_id: null,
+    peran_anggota,
     rute_narasi,
     tas_siaga_tambahan: tasTambahanDasar(input),
     tips_rumah: tips_rumah.slice(0, 5),

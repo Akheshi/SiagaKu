@@ -25,13 +25,12 @@ export default function Home() {
     <div className="mx-auto max-w-[1200px] px-4">
       <div className="grid items-start gap-8 py-8 sm:py-14 lg:grid-cols-[1.25fr_1fr] lg:gap-12">
       <section aria-labelledby="judul-beranda">
-        <h1 id="judul-beranda" className="max-w-[12ch] text-[clamp(44px,6.4vw,84px)]">
-          Gempa kuat datang. Keluargamu lari ke mana?
+        <h1 id="judul-beranda" className="max-w-[13ch] text-[clamp(44px,6.4vw,84px)]">
+          Apa rencana keluargamu saat gempa?
         </h1>
         <p className="mt-5 max-w-[52ch] text-[19px] text-ink-2">
-          Tandai rumahmu di peta dan ceritakan siapa saja yang tinggal di sana. SiagaKu menghitung
-          risikonya dari data BMKG, ketinggian, dan peta terbuka. AI lalu memilih persiapan yang paling
-          mendesak untuk keluargamu, dan rencananya bisa dicetak atau dibagikan ke grup keluarga.
+          Tandai rumahmu dan isi siapa yang perlu dibantu. SiagaKu menyiapkan langkah saat gempa,
+          pembagian tugas keluarga, dan daftar tas siaga yang bisa dicetak.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <ButtonLink href="/cek" variant="go" className="w-full sm:w-auto">
@@ -42,7 +41,7 @@ export default function Home() {
           </ButtonLink>
         </div>
         <p className="mt-3.5 text-sm text-ink-3">
-          Tanpa daftar akun. Data hanya tersimpan di perangkatmu.
+          Tanpa akun. <a className="underline" href="/tentang#privasi">Cara isian dipakai</a>
         </p>
       </section>
       <Suspense fallback={<QuakePanelKosong pesan="Memuat data gempa BMKG…" />}>
@@ -67,16 +66,15 @@ export default function Home() {
 
       <section className="mt-14 grid gap-4 md:grid-cols-[1fr_1.4fr] md:gap-12" aria-labelledby="judul-alasan">
         <h2 id="judul-alasan" className="max-w-[14ch] text-[40px]">
-          Kenapa per rumah, bukan per kota
+          Apa yang perlu disiapkan di rumah?
         </h2>
         <div className="max-w-[62ch] space-y-3 text-ink-2">
           <p>
-            Peta risiko resmi menunjukkan wilayah. Tapi dua rumah di kelurahan yang sama bisa berbeda
-            tingkat risiko karena ketinggian, posisi terhadap pantai, dan kondisi bangunannya.
+            Dua rumah di kelurahan yang sama bisa punya kebutuhan berbeda. Di rumah yang ada balita
+            atau lansia, misalnya, tentukan dari sekarang siapa yang bisa mendampingi mereka.
           </p>
           <p>
-            Rumus skor bisa kamu periksa. AI hanya memilih dua persiapan yang paling mendesak dari daftar
-            yang disusun aplikasi, jadi tidak mengarang angka atau tempat.
+            DeepSeek memilih dua hal untuk dibahas lebih dulu dari daftar persiapan yang sudah disusun SiagaKu.
           </p>
         </div>
       </section>
