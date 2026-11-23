@@ -260,6 +260,24 @@ function TampilanHasil({ data: d, contoh, kunciTas, galatPembaruan, onPerbarui }
         )}
       </div>
 
+      <div className="mt-4 flex flex-wrap gap-2">
+        {/* Buka ulang dokumen agar lembar membaca hasil terakhir dari penyimpanan. */}
+        <a href={contoh ? "/hasil/cetak?contoh=bengkulu" : "/hasil/cetak"} className={buttonClass("go", "min-h-11 px-4 text-[15px]")}>
+          Cetak lembar rencana
+        </a>
+        <a
+          className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}
+          href={`https://wa.me/?text=${encodeURIComponent(teksBagikan(d))}`}
+          target="_blank"
+          rel="noopener"
+        >
+          Bagikan ke WhatsApp
+        </a>
+        <Link href="/cek" className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}>
+          Ubah data
+        </Link>
+      </div>
+
       <div className="mt-5 grid border-2 border-ink bg-white md:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="relative z-0 min-h-[380px] border-b-2 border-ink md:min-h-[540px] md:border-r-2 md:border-b-0">
           <div className="absolute inset-0">
@@ -346,24 +364,6 @@ function TampilanHasil({ data: d, contoh, kunciTas, galatPembaruan, onPerbarui }
             )}
           </div>
         </div>
-      </div>
-
-      <div className="mt-5 flex flex-wrap gap-2">
-        {/* Buka ulang dokumen agar lembar membaca hasil terakhir dari penyimpanan. */}
-        <a href={contoh ? "/hasil/cetak?contoh=bengkulu" : "/hasil/cetak"} className={buttonClass("go", "min-h-11 px-4 text-[15px]")}>
-          Cetak lembar rencana
-        </a>
-        <a
-          className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}
-          href={`https://wa.me/?text=${encodeURIComponent(teksBagikan(d))}`}
-          target="_blank"
-          rel="noopener"
-        >
-          Bagikan ke WhatsApp
-        </a>
-        <Link href="/cek" className={buttonClass("plain", "min-h-11 px-4 text-[15px]")}>
-          Ubah data
-        </Link>
       </div>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-12">
