@@ -1,6 +1,6 @@
 # SiagaKu
 
-**Rencana siaga gempa & tsunami untuk satu rumah tangga — bukan untuk satu kota.**
+**Rencana siaga gempa dan tsunami untuk keluarga.**
 
 Tandai rumahmu di peta dan isi kondisi keluarga untuk melihat rincian skor risiko, kandidat lokasi sekitar, rencana evakuasi keluarga, dan isi tas siaga.
 
@@ -14,23 +14,21 @@ Tandai rumahmu di peta dan isi kondisi keluarga untuk melihat rincian skor risik
 
 ## Masalah
 
-Bengkulu berada di atas zona subduksi Sunda (segmen Megathrust Mentawai) dan pernah diguncang gempa besar pada 2000 dan 2007. Peta risiko dan info gempa yang ada bersifat **per wilayah**, sementara keputusan yang menentukan selamat atau tidak terjadi **per rumah**: lari ke mana, lewat mana, siapa membantu nenek atau balita, apa yang dibawa.
-
-Kebanyakan keluarga tidak tahu ketinggian rumahnya, tidak tahu jarak pastinya ke pantai, dan tidak punya rencana tertulis.
+Peta risiko dan kabar gempa membantu warga Bengkulu memahami ancaman di wilayahnya. Di rumah, masih ada keputusan yang perlu dibahas bersama. Siapa yang bisa membantu balita atau lansia? Di mana keluarga bertemu jika terpisah? SiagaKu menyiapkan lembar yang bisa diisi, dicetak, dan dibahas.
 
 ## Fitur
 
 | | |
 |---|---|
-| **Info gempa terkini BMKG** | Gempa terbaru di beranda, diperbarui tiap ±1 menit |
+| **Info gempa terkini BMKG** | Gempa terbaru dan daftar 15 kejadian M5+ terakhir, dengan waktu kejadian dan sumber |
 | **Pilih lokasi rumah** | GPS atau geser pin di peta; ketinggian (Open-Meteo) dan **jarak ke pantai dihitung otomatis** dari garis pantai OpenStreetMap |
 | **Skor risiko 0–100 yang transparan** | Rumus terbuka dari 6 faktor, setiap poin ditampilkan beserta alasannya |
 | **Kandidat lokasi dari peta** | Tempat umum dari OpenStreetMap yang disaring berdasarkan ketinggian dan jarak. Status evakuasi serta akses perlu dikonfirmasi ke BPBD |
 | **Papan rambu evakuasi** | Arahan sesuai kondisi pesisir atau nonpesisir, berdasarkan panduan BMKG |
-| **Rencana keluarga** | Aplikasi menyusun langkah, tugas, dan tips. DeepSeek memilih satu tips dan satu peran untuk dibahas lebih dulu |
+| **Rencana keluarga** | Aplikasi menyusun langkah, tugas, dan tas siaga. DeepSeek memilih dua fokus persiapan dari daftar yang ditulis aplikasi |
 | **Checklist tas siaga** | Isi dasar + kebutuhan khusus (lansia, balita, ibu hamil, disabilitas, obat rutin), tersimpan di perangkat |
-| **Bagikan ke WhatsApp** | Ringkasan rencana untuk grup keluarga |
-| **Tanpa akun** | Tidak ada login, tidak ada database; data hanya di perangkat pengguna |
+| **Cetak dan bagikan** | Simpan lembar lengkap sebagai PDF atau bagikan arahan umum dan tautan SiagaKu lewat WhatsApp |
+| **Tanpa akun** | Isian dikirim ke server saat dihitung. Draf, hasil, dan centang disimpan di browser |
 
 ## Cara kerja
 
@@ -59,13 +57,19 @@ Data keluarga ─┐
 2. DeepSeek menerima opsi persiapan yang dibuat aplikasi. Server hanya menerima dua indeks yang sesuai dengan daftar. Nama keluarga, koordinat rumah, dan tulisan obat rutin tidak dikirim ke DeepSeek.
 3. Jika AI gagal atau melampaui batas 8 detik, rencana tampil dengan urutan persiapan bawaan.
 
+Dalam satu uji contoh Kota Bengkulu, urutan bawaan memilih jarak ke pantai dan bangunan. DeepSeek memilih jarak ke pantai dan kerentanan keluarga, sehingga pendampingan anggota keluarga muncul di daftar persiapan awal.
+
+### Cara isian dipakai
+
+Formulir diproses oleh server saat pengguna meminta rencana. Koordinat dipakai untuk mengambil data peta atau elevasi. DeepSeek menerima jumlah penghuni, kategori anggota yang perlu bantuan, status obat rutin, kendaraan, dan opsi tindakan. WhatsApp menerima arahan umum dan tautan situs. Pengguna dapat menyimpan PDF secara terpisah. Tautan berbasis isian dari versi lama sudah dinonaktifkan.
+
 ## Metodologi skor (ringkas)
 
 | Faktor | Sumber | Maks | Aturan |
 |---|---|---|---|
-| Ketinggian rumah | Open-Meteo | 30 | < 5 m: 30 · 5–10: 25 · 10–20: 18 · 20–30: 10 · ≥ 30: 3 |
-| Jarak ke pantai | garis pantai OSM (bisa diubah pengguna) | 25 | < 0,5 km: 25 · 0,5–1: 20 · 1–3: 13 · 3–5: 6 · > 5: 0 |
-| Aktivitas gempa | BMKG, 15 gempa M5+ terakhir | 15 | dalam 300 km: 0 → 0 · 1 → 5 · 2–3 → 10 · ≥ 4 → 15 |
+| Ketinggian rumah | Open-Meteo | 30 | < 5 m: 30 · 5 hingga < 10: 25 · 10 hingga < 20: 18 · 20 hingga < 30: 10 · ≥ 30: 3 · data tidak tersedia: 25 |
+| Jarak ke pantai | garis pantai OSM (bisa diubah pengguna) | 25 | < 0,5 km: 25 · 0,5 hingga < 1: 20 · 1 hingga < 3: 13 · 3–5: 6 · > 5: 0 |
+| Aktivitas gempa | BMKG, 15 gempa M5+ terakhir | 15 | dalam 300 km: 0 → 0 · 1 → 5 · 2–3 → 10 · ≥ 4 → 15 · daftar tidak lengkap: skor sementara |
 | Bangunan | pengguna | 15 | beton bertulang 3 · bata tanpa tulangan 10 · kayu 8 · > 2 lantai tanpa tulangan +5 |
 | Kerentanan keluarga | pengguna | 10 | +3 per kategori (lansia, balita, ibu hamil, disabilitas), +1 tanpa kendaraan |
 | Banjir sungai | pengguna | 5 | < 100 m: 5 · 100–500 m: 3 · lebih jauh: 0 |
@@ -73,10 +77,10 @@ Data keluarga ─┐
 Kategori: 0–39 Rendah · 40–59 Sedang · 60–79 Tinggi · 80–100 Sangat tinggi. Detail di halaman [/tentang](https://siagaku.vercel.app/tentang).
 
 **Kandidat lokasi dua tingkat.** Data contoh dari Kota Bengkulu menunjukkan sedikit tempat umum di ketinggian ≥ 30 m dalam radius 5 km. Peta menampilkan kandidat untuk diperiksa saat menyusun rencana keluarga.
-1. **Tempat tinggi** — ≥ 30 m (atau ≥ rumah + 15 m) dalam 5 km, diutamakan.
-2. **Cadangan pemetaan** — jika tingkat pertama kurang dari 3 kandidat. Radius 3 km, minimal 5 m lebih tinggi dari rumah, serta terbukti lebih jauh dari pantai berdasarkan data jarak rumah dan kandidat.
+1. **Tingkat 1.** Radius 5 km, ambang terendah di antara 30 m dan elevasi rumah ditambah 15 m. Jika elevasi rumah diketahui, kandidat juga harus lebih tinggi dari rumah. Jika tidak, ambangnya 30 m.
+2. **Cadangan pemetaan.** Digunakan pada data bawaan Bengkulu jika tingkat pertama kurang dari tiga kandidat. Radius 3 km, minimal 5 m lebih tinggi dari rumah dan lebih jauh dari garis pantai berdasarkan kedua jarak yang terukur.
 
-> Skor bersifat indikatif berdasarkan faktor yang lazim dipakai BNPB/InaRISK, **bukan pengganti kajian resmi BPBD**.
+> Skor indikatif ini memakai bobot yang disusun tim untuk membantu persiapan. Untuk kajian bahaya wilayah dan tujuan evakuasi resmi, cek InaRISK dan BPBD.
 
 ## Tech stack
 
@@ -87,7 +91,7 @@ Kategori: 0–39 Rendah · 40–59 Sedang · 60–79 Tinggi · 80–100 Sangat t
 | Peta | Leaflet 1.9 + react-leaflet 5, tile OpenStreetMap |
 | Validasi | zod 4 |
 | AI dalam produk | DeepSeek `deepseek-chat` (API format OpenAI), dipanggil hanya dari server |
-| Uji | Vitest (110 unit test) |
+| Uji | Vitest untuk logika dan API, serta pengujian alur di browser |
 | Hosting | Vercel |
 
 ## Menjalankan di komputer sendiri
@@ -140,8 +144,8 @@ scripts/                  pengunduh data
 
 - Ketinggian dari model elevasi global (resolusi ±90 m), bukan survei lapangan.
 - Data kandidat bawaan mencakup Provinsi Bengkulu. Di daerah lain, kelengkapan data bergantung pada Overpass.
-- Belum mempertimbangkan apakah bangunan tujuan benar-benar bisa dimasuki saat darurat atau berapa lantainya.
-- Rute masih garis lurus + estimasi; belum memakai jaringan jalan.
+- Rentang 15 gempa terakhir mengikuti data BMKG. Batas 5 km dari pantai adalah aturan aplikasi untuk skor dan arahan awal. Ikuti peringatan resmi yang berlaku di lokasimu.
+- Akses dan kelayakan setiap kandidat harus dicek ke BPBD. Jarak garis lurus dan taksiran waktu hanya membantu persiapan awal.
 - Lanjutan: data TES (tempat evakuasi sementara) resmi dari BPBD, rute jalan kaki nyata, mode luring (PWA), dan versi untuk sekolah.
 
 ## Pengungkapan penggunaan AI, library, aset, dan data
@@ -150,7 +154,7 @@ Bagian ini wajib menurut panduan lomba.
 
 **AI coding assistant**
 - **Claude Code (Anthropic)** — membantu menulis, menguji, dan merapikan kode, serta menyusun dokumen perencanaan, atas arahan dan keputusan tim. Commit yang dibantu ditandai `Co-Authored-By: Claude` di riwayat git.
-- **OpenAI Codex** — asisten coding cadangan saat Claude Code mencapai batas pemakaian.
+- **OpenAI Codex** — membantu menulis dan meninjau kode, menguji regresi di browser, dan menyelaraskan dokumentasi.
 
 **AI di dalam produk**
 - **DeepSeek** (`deepseek-chat`) — membaca kondisi keluarga dan memilih dua *fokus persiapan* paling mendesak ("Kerjakan lebih dulu") dari daftar faktor-tindakan yang disusun aplikasi. AI hanya mengembalikan nomor opsi; teks, skor, langkah darurat, dan peran selalu dari aplikasi, sehingga AI tidak bisa menambahkan angka, tempat, atau instruksi baru. Gagal/tidak valid/lebih dari 8 detik → fokus bawaan dari skor.
@@ -165,11 +169,11 @@ Bagian ini wajib menurut panduan lomba.
 **Data:**
 - **BMKG** — data gempa terbuka (data.bmkg.go.id). Sumber: BMKG.
 - **OpenStreetMap** — peta, garis pantai, dan calon titik aman. © kontributor OpenStreetMap, lisensi ODbL.
-- **Open-Meteo** — API ketinggian, lisensi CC BY 4.0.
+- **Open-Meteo** — API ketinggian berbasis Copernicus DEM GLO-90, [lisensi data CC BY 4.0](https://open-meteo.com/en/license).
 
 ## Tim
 
-**Tim SiagaKu** — Universitas Bengkulu
+**Tim Cihuyy** — IT RUSH 2026
 
 | Nama | Peran |
 |---|---|
@@ -178,4 +182,4 @@ Bagian ini wajib menurut panduan lomba.
 
 ## Lisensi
 
-Kode: MIT. Data OpenStreetMap di `src/data/` tetap berlisensi ODbL.
+Kode: [MIT](LICENSE). Data OpenStreetMap di `src/data/` berlisensi [ODbL](https://www.openstreetmap.org/copyright).
