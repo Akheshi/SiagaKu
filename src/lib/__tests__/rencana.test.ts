@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CONTOH_BENGKULU } from "../input";
-import { periksaRencanaAI, rencanaTemplate, RencanaSchema, tasDasar, tasTambahanDasar } from "../rencana";
+import { opsiFokus, periksaRencanaAI, rencanaTemplate, RencanaSchema, tasDasar, tasTambahanDasar } from "../rencana";
 import { hitungSkor, keInputSkorDummy } from "./helper";
 
 const input = CONTOH_BENGKULU;
@@ -53,25 +53,51 @@ describe("rencanaTemplate", () => {
   });
 });
 
+describe("opsiFokus", () => {
+  it("satu opsi per faktor yang menyumbang poin, urut porsi poin terbesar", () => {
+    const o = opsiFokus({ input, skor });
+    const berpoin = skor.rincian.filter((f) => f.poin > 0).map((f) => f.faktor);
+    expect(o.map((x) => x.faktor).sort()).toEqual([...berpoin].sort());
+    const porsi = o.map((x) => {
+      const f = skor.rincian.find((r) => r.faktor === x.faktor)!;
+      return f.poin / f.maks;
+    });
+    expect(porsi).toEqual([...porsi].sort((a, b) => b - a));
+  });
+
+  it("template memakai dua opsi teratas sebagai fokus bawaan", () => {
+    expect(rencanaTemplate({ input, skor }).fokus).toEqual(opsiFokus({ input, skor }).slice(0, 2));
+  });
+
+  it("rumah jauh dari pantai tidak diberi tindakan jalur tsunami", () => {
+    const jauh = { ...input, jarakPantai: "gt5" as const };
+    const o = opsiFokus({ input: jauh, skor: hitungSkor(keInputSkorDummy(jauh)) });
+    expect(o.every((x) => !x.tindakan.includes("tsunami"))).toBe(true);
+  });
+});
+
 describe("periksaRencanaAI", () => {
   const baik = rencanaTemplate({ input, skor });
+  const opsi = opsiFokus({ input, skor });
 
-  it("hanya memindahkan prioritas dari daftar sistem ke urutan pertama", () => {
-    const r = periksaRencanaAI({ prioritas_tips: 1, prioritas_peran: 1 }, baik);
-    expect(r).toEqual({
-      ...baik,
-      tips_rumah: [baik.tips_rumah[1], baik.tips_rumah[0], ...baik.tips_rumah.slice(2)],
-      peran_anggota: [baik.peran_anggota[1], baik.peran_anggota[0], ...baik.peran_anggota.slice(2)],
-    });
+  it("fokus diambil dari daftar sistem sesuai urutan pilihan AI; bagian lain tidak berubah", () => {
+    const r = periksaRencanaAI({ fokus: [2, 0] }, baik, opsi);
+    expect(r).toEqual({ ...baik, fokus: [opsi[2], opsi[0]] });
+    expect(r?.peran_anggota).toEqual(baik.peran_anggota);
+    expect(r?.langkah_darurat).toEqual(baik.langkah_darurat);
   });
 
   it("menolak bentuk JSON yang salah", () => {
-    expect(periksaRencanaAI({ ringkasan: "x" }, baik)).toBeNull();
-    expect(periksaRencanaAI("bukan objek", baik)).toBeNull();
+    expect(periksaRencanaAI({ ringkasan: "x" }, baik, opsi)).toBeNull();
+    expect(periksaRencanaAI("bukan objek", baik, opsi)).toBeNull();
+    expect(periksaRencanaAI({ fokus: ["Bangunan"] }, baik, opsi)).toBeNull();
   });
 
-  it("menolak indeks di luar daftar dan respons dengan kolom bebas", () => {
-    expect(periksaRencanaAI({ prioritas_tips: 99, prioritas_peran: 0 }, baik)).toBeNull();
-    expect(periksaRencanaAI({ prioritas_tips: 0, prioritas_peran: 0, ringkasan: "teks baru" }, baik)).toBeNull();
+  it("menolak indeks di luar daftar, duplikat, kurang, dan kolom bebas", () => {
+    expect(periksaRencanaAI({ fokus: [99, 0] }, baik, opsi)).toBeNull();
+    expect(periksaRencanaAI({ fokus: [1, 1] }, baik, opsi)).toBeNull();
+    expect(periksaRencanaAI({ fokus: [0] }, baik, opsi)).toBeNull();
+    expect(periksaRencanaAI({ fokus: [0, 1, 2] }, baik, opsi)).toBeNull();
+    expect(periksaRencanaAI({ fokus: [0, 1], alasan: "teks baru" }, baik, opsi)).toBeNull();
   });
 });

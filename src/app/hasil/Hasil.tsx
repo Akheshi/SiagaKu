@@ -151,6 +151,7 @@ function teksBagikan(d: HasilRencana) {
     `Rencana siaga ${d.input.namaKeluarga ? `Keluarga ${d.input.namaKeluarga}` : "keluarga kita"} (SiagaKu)`,
     `Skor risiko rumah: ${d.skor.total}/100 (${d.skor.kategori})`,
     ...d.rencana.langkah_darurat.map((l, i) => `${i + 1}. ${l}`),
+    ...((d.rencana.fokus ?? []).length ? ["", "Kerjakan lebih dulu:", ...d.rencana.fokus.map((f) => `- ${f.tindakan}`)] : []),
     `Buat rencanamu sendiri: ${window.location.origin}/cek`,
   ]
     .join("\n");
@@ -315,10 +316,36 @@ function TampilanHasil({ data: d, contoh, kunciTas }: { data: HasilRencana; cont
               Rencana keluarga
             </h2>
             <span className="text-right text-[13px] text-ink-3">
-              {d.sumberRencana === "ai" ? "Prioritas persiapan dipilih AI" : "Prioritas persiapan bawaan"}
+              {d.sumberRencana === "ai" ? "Fokus persiapan dipilih AI" : "Fokus persiapan bawaan"}
             </span>
           </div>
           <p className="max-w-[62ch] text-lg leading-relaxed">{rencana.ringkasan}</p>
+
+          {(rencana.fokus ?? []).length > 0 && (
+            <div className="mt-6 border-2 border-ink" aria-labelledby="judul-fokus">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 bg-ink px-4 py-2 text-white">
+                <h3 id="judul-fokus" className="font-sign text-xl font-bold tracking-wide uppercase">
+                  Kerjakan lebih dulu
+                </h3>
+                <span className="font-mono text-xs opacity-80">
+                  {d.sumberRencana === "ai" ? "urutan dipilih DeepSeek dari daftar SiagaKu" : "urutan bawaan dari skor"}
+                </span>
+              </div>
+              <ol>
+                {rencana.fokus.map((f, i) => (
+                  <li key={f.faktor} className="grid grid-cols-[40px_1fr] gap-3 border-t border-line px-4 py-3 first:border-t-0">
+                    <span className="grid size-8 place-items-center bg-risk font-mono font-semibold text-white">{i + 1}</span>
+                    <div>
+                      <p className="font-semibold">
+                        {f.faktor} <span className="font-normal text-ink-3">· {f.nilai}</span>
+                      </p>
+                      <p className="text-[15.5px] text-ink-2">{f.tindakan}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
 
           <ol className="mt-6">
             {rencana.langkah_darurat.map((l, i) => (

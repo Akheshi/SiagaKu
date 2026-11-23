@@ -207,7 +207,7 @@ export default function Tentang() {
                     <a className="underline" href="https://platform.deepseek.com/" target="_blank" rel="noreferrer">
                     platform.deepseek.com
                     </a>{" "}
-                    (memilih prioritas tips rumah dan peran keluarga).
+                    (memilih dua fokus persiapan paling mendesak dari daftar yang disusun aplikasi; teks dan arahan tetap dari aplikasi).
                 </li>
                 <li>
                     <strong>Tile peta</strong>: OpenStreetMap via Leaflet. © OpenStreetMap contributors,

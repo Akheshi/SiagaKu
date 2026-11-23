@@ -47,10 +47,10 @@ Data keluarga ─┐
                ▼
         Rencana dari aplikasi (lib/rencana.ts)
                │
-        DeepSeek memilih prioritas ─────────► indeks divalidasi (zod)
+        DeepSeek memilih 2 fokus ───────────► indeks divalidasi (zod)
                │                                   │ gagal / tidak valid
                ▼                                   ▼
-        Halaman hasil  ◄──────────────────  urutan persiapan bawaan
+        Halaman hasil  ◄──────────────────  fokus bawaan dari skor
 ```
 
 ### Prinsip AI di dalam produk
@@ -153,7 +153,7 @@ Bagian ini wajib menurut panduan lomba.
 - **OpenAI Codex** — asisten coding cadangan saat Claude Code mencapai batas pemakaian.
 
 **AI di dalam produk**
-- **DeepSeek** (`deepseek-chat`) — memilih prioritas tips dan peran keluarga dari daftar aplikasi.
+- **DeepSeek** (`deepseek-chat`) — membaca kondisi keluarga dan memilih dua *fokus persiapan* paling mendesak ("Kerjakan lebih dulu") dari daftar faktor-tindakan yang disusun aplikasi. AI hanya mengembalikan nomor opsi; teks, skor, langkah darurat, dan peran selalu dari aplikasi, sehingga AI tidak bisa menambahkan angka, tempat, atau instruksi baru. Gagal/tidak valid/lebih dari 8 detik → fokus bawaan dari skor.
 
 **Template**
 - Proyek dibuat dari `create-next-app` (Next.js). Tidak memakai template UI siap pakai; tampilan dirancang sendiri dengan konsep "bahasa rambu evakuasi".

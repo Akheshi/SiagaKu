@@ -1,6 +1,6 @@
 import { hitungGempaDekat } from "@/lib/bmkg";
 import { InputRencana, keInputSkor } from "@/lib/input";
-import { rencanaTemplate, tasDasar } from "@/lib/rencana";
+import { opsiFokus, rencanaTemplate, tasDasar } from "@/lib/rencana";
 import { hitungSkor } from "@/lib/score";
 import { mintaRencanaAI } from "@/lib/server/ai";
 import { bolehLewat, ipDari } from "@/lib/server/batasLaju";
@@ -9,7 +9,7 @@ import { galat } from "@/lib/server/validasi";
 
 /**
  * POST /api/rencana — hitung skor dan arahan serta cari kandidat OSM.
- * DeepSeek hanya menentukan prioritas persiapan. Jika gagal, pakai urutan awal.
+ * DeepSeek hanya memilih dua fokus persiapan dari daftar aplikasi. Jika gagal, pakai urutan bawaan.
  */
 export async function POST(request: Request) {
   if (!bolehLewat(ipDari(request))) {
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   const template = rencanaTemplate({ input, skor });
   const [{ titik, sumber: sumberTitik }, ai] = await Promise.all([
     cariTitikAman(lat, lon, input.elevasiM, lambat),
-    mintaRencanaAI(input, template),
+    mintaRencanaAI(input, template, opsiFokus({ input, skor })),
   ]);
   const rencana = ai ?? template;
 

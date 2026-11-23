@@ -22,8 +22,8 @@ export type HasilRencana = {
 // Buat ulang hasil lama agar arahan sebelumnya tidak ditampilkan atau dicetak.
 export function kunciPenyimpananRencana(contoh: boolean) {
   return contoh
-    ? { hasil: "siagaku:hasil:contoh:v2", tas: "siagaku:tas:contoh" }
-    : { hasil: "siagaku:hasil:v2", tas: "siagaku:tas" };
+    ? { hasil: "siagaku:hasil:contoh:v3", tas: "siagaku:tas:contoh" }
+    : { hasil: "siagaku:hasil:v3", tas: "siagaku:tas" };
 }
 
 export function kunciInput(i: InputRencanaT): string {

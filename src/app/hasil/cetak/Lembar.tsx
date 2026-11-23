@@ -92,7 +92,6 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
     ...rencana.tas_siaga_tambahan.map((t, i) => ({ id: `t${i}-${t.barang}`, barang: t.barang })),
   ];
   const warna = warnaKategori(skor.kategori);
-  const faktorBesar = [...skor.rincian].sort((a, b) => b.poin / b.maks - a.poin / a.maks).slice(0, 2);
   const tanggal = new Date(d.dibuat).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   const kandidat = d.titik.slice(0, 3);
   const judul = contoh ? "Contoh — Kota Bengkulu" : input.namaKeluarga ? `Keluarga ${input.namaKeluarga}` : "Keluarga kami";
@@ -118,7 +117,7 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
             </p>
             <p className="flex gap-2">Alamat:<span className="mb-1 flex-1 border-b border-dotted border-[#1d1b16]" /></p>
             <p className="text-[13.5px] text-[#4a4436] print:text-[11px]">
-              Penyumbang risiko terbesar: {faktorBesar.map((f) => `${f.faktor.toLowerCase()} (${f.nilai})`).join("; ")} · disusun {tanggal}
+              Disusun {tanggal}
             </p>
           </div>
           <div
@@ -144,6 +143,19 @@ function IsiLembar({ contoh }: { contoh: boolean }) {
             </li>
           ))}
         </ol>
+
+        {(rencana.fokus ?? []).length > 0 && (
+          <>
+            <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">Kerjakan lebih dulu</h2>
+            <ol className="list-decimal pl-6">
+              {rencana.fokus.map((f) => (
+                <li key={f.faktor} className="my-1">
+                  <b className="font-semibold">{f.faktor}</b> ({f.nilai}): {f.tindakan}
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
 
         <h2 className="mt-7 mb-2 font-serif text-[19px] font-semibold">Tujuan evakuasi</h2>
         <table className="w-full border-collapse text-[14.5px]">

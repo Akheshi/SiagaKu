@@ -1,5 +1,5 @@
 /**
- * Rencana deterministik, prioritas persiapan dari AI, dan tas siaga dasar.
+ * Rencana deterministik, fokus persiapan dipilih AI dari daftar sistem, dan tas siaga dasar.
  * Semua fungsi murni — dipakai server (fallback) dan diuji unit.
  */
 import { z } from "zod";
@@ -11,6 +11,7 @@ const teks = (maks: number) => z.string().trim().min(1).max(maks);
 
 export const RencanaSchema = z.object({
   ringkasan: teks(600),
+  fokus: z.array(z.object({ faktor: teks(40), nilai: teks(120), tindakan: teks(240) })).max(2),
   langkah_darurat: z.array(teks(300)).min(3).max(7),
   peran_anggota: z.array(z.object({ siapa: teks(40), tugas: teks(240) })).min(1).max(8),
   titik_tujuan_id: z.string().nullable(),
@@ -55,14 +56,39 @@ export function tasTambahanDasar(i: InputRencanaT): Rencana["tas_siaga_tambahan"
   return t.slice(0, 8);
 }
 
+export type OpsiFokus = Rencana["fokus"][number];
+
+/**
+ * Pilihan fokus persiapan: satu per faktor skor yang menyumbang poin, dengan tindakan
+ * yang sudah ditulis aplikasi. AI hanya memilih indeks dari daftar ini (lihat periksaRencanaAI).
+ * Urutan bawaan: faktor dengan porsi poin terbesar lebih dulu.
+ */
+export function opsiFokus({ input, skor }: Konteks): OpsiFokus[] {
+  const dekatPantai = pesisir(input);
+  const tindakan: Record<string, string> = {
+    "Ketinggian rumah": dekatPantai
+      ? "Tanyakan lokasi dan jalur evakuasi tsunami resmi ke BPBD atau kelurahan, lalu jalani rutenya bersama keluarga."
+      : "Kenali jalan menuju tempat yang lebih tinggi di sekitar rumah untuk berjaga saat banjir.",
+    "Jarak ke pantai":
+      "Latih evakuasi ke tempat tinggi bersama keluarga dan catat waktunya; begitu gempa kuat atau lama mereda, langsung berangkat.",
+    "Aktivitas gempa": "Taruh tas siaga di dekat pintu keluar dan sepakati satu titik kumpul jika keluarga terpisah.",
+    Bangunan: "Periksa dinding yang retak, ikat lemari tinggi ke dinding, dan pertimbangkan perkuatan kolom saat renovasi.",
+    "Kerentanan keluarga":
+      "Tentukan siapa yang mendampingi anggota yang perlu dibantu, dan simpan obat serta alat bantunya di tas siaga.",
+    "Banjir sungai": "Simpan dokumen penting di tempat tinggi dan pantau peringatan banjir dari BPBD.",
+  };
+  return [...skor.rincian]
+    .filter((f) => f.poin > 0 && tindakan[f.faktor])
+    .sort((a, b) => b.poin / b.maks - a.poin / a.maks)
+    .map((f) => ({ faktor: f.faktor, nilai: f.nilai, tindakan: tindakan[f.faktor] }));
+}
+
 /** Skor, arahan darurat, dan teks persiapan selalu dibentuk oleh aplikasi. */
 export function rencanaTemplate({ input, skor }: Konteks): Rencana {
-  const faktorBesar = [...skor.rincian].sort((a, b) => b.poin / b.maks - a.poin / a.maks).slice(0, 2);
   const lambat = input.kerentanan.lansia || input.kerentanan.disabilitas || input.kerentanan.balita;
 
   const ringkasan = [
     `Skor risiko rumahmu ${skor.total} dari 100, kategori ${skor.kategori.toLowerCase()}.`,
-    `Penyumbang terbesar: ${faktorBesar.map((f) => `${f.faktor.toLowerCase()} (${f.nilai})`).join(" dan ")}.`,
     pesisir(input)
       ? "Jika gempa terasa kuat atau lama di pesisir, segera evakuasi setelah guncangan mereda."
       : "Rumahmu jauh dari pantai, jadi fokus utamanya adalah selamat dari guncangan dan reruntuhan.",
@@ -105,6 +131,7 @@ export function rencanaTemplate({ input, skor }: Konteks): Rencana {
 
   return {
     ringkasan,
+    fokus: opsiFokus({ input, skor }).slice(0, 2),
     langkah_darurat,
     peran_anggota: peran_anggota.slice(0, 8),
     titik_tujuan_id: null,
@@ -114,23 +141,19 @@ export function rencanaTemplate({ input, skor }: Konteks): Rencana {
   };
 }
 
-const PrioritasSchema = z.strictObject({
-  prioritas_tips: z.number().int().min(0),
-  prioritas_peran: z.number().int().min(0),
+const PilihanAISchema = z.strictObject({
+  fokus: z.array(z.number().int().min(0)).min(1).max(2),
 });
 
-function dahulukan<T>(daftar: T[], indeks: number): T[] {
-  return [daftar[indeks], ...daftar.slice(0, indeks), ...daftar.slice(indeks + 1)];
-}
-
-export function periksaRencanaAI(mentah: unknown, rencana: Rencana): Rencana | null {
-  const hasil = PrioritasSchema.safeParse(mentah);
+/**
+ * Terima jawaban AI hanya jika berupa indeks unik dari `opsi`. Teks fokus selalu
+ * diambil dari daftar sistem, jadi AI tidak bisa menambah angka, tempat, atau instruksi.
+ */
+export function periksaRencanaAI(mentah: unknown, rencana: Rencana, opsi: OpsiFokus[]): Rencana | null {
+  const hasil = PilihanAISchema.safeParse(mentah);
   if (!hasil.success) return null;
-  const { prioritas_tips, prioritas_peran } = hasil.data;
-  if (prioritas_tips >= rencana.tips_rumah.length || prioritas_peran >= rencana.peran_anggota.length) return null;
-  return {
-    ...rencana,
-    tips_rumah: dahulukan(rencana.tips_rumah, prioritas_tips),
-    peran_anggota: dahulukan(rencana.peran_anggota, prioritas_peran),
-  };
+  const { fokus } = hasil.data;
+  if (new Set(fokus).size !== fokus.length || fokus.some((i) => i >= opsi.length)) return null;
+  if (fokus.length < Math.min(2, opsi.length)) return null;
+  return { ...rencana, fokus: fokus.map((i) => opsi[i]) };
 }
